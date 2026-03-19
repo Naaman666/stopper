@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Stopper</title>
+<style>
+/* Stopper – Inline CSS */
+:root {
+  --bg: #f2f2f7;
+  --arc-track: #1c1c2e;
+  --arc-normal: #7c6af7;
+  --arc-alert: #ff3b30;
+  --btn-stop-bg: #1c1c2e;
+  --btn-start-bg: #7c6af7;
+  --dur-active-bg: #7c6af7;
+  --dur-inactive-bg: #e2e0f8;
+  --drum-bg: #e2e0f8;
+  --drum-sel: rgba(124,106,247,0.2);
+  --drum-item: #3d33a8;
+  --drum-dim: rgba(61,51,168,0.22);
+  --drum-label: #7c6af7;
+  --text: #1c1c2e;
+  --text-inv: #fff;
+}
+[data-theme="dark"] {
+  --bg: #1a1a24;
+  --arc-track: #2e2c44;
+  --arc-normal: #6857e8;
+  --arc-alert: #cc2f26;
+  --btn-stop-bg: #2e2c44;
+  --btn-start-bg: #5a4fcf;
+  --dur-active-bg: #5a4fcf;
+  --dur-inactive-bg: #252336;
+  --drum-bg: #252336;
+  --drum-sel: rgba(104,87,232,0.3);
+  --drum-item: #e8e6ff;
+  --drum-dim: rgba(232,230,255,0.18);
+  --drum-label: #8b7ff0;
+  --text: #e8e6ff;
+  --text-inv: #fff;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body {
+  height: 100%; width: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+  touch-action: manipulation;
+  -webkit-user-select: none; user-select: none;
+  transition: background 0.3s;
+}
+#app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  max-width: 480px;
+  margin: 0 auto;
+  height: 100%;
+  padding: 10px 20px 80px;
+}
+.header { display: flex; justify-content: flex-end; align-items: center; padding: 8px 0; }
+#themeBtn {
+  border-radius: 20px; font-size: 0.78rem; font-weight: 700;
+  border: 2px solid var(--arc-normal); background: transparent;
+  color: var(--arc-normal); padding: 5px 14px; cursor: pointer;
+  transition: background 0.2s, color 0.2s, border-color 0.3s;
+}
+#themeBtn:active { background: var(--arc-normal); color: var(--text-inv); }
+.clock-area { display: flex; align-items: center; justify-content: center; }
+#clock-wrap { touch-action: none; cursor: pointer; }
+#clock-wrap svg { display: block; }
+.controls { display: flex; flex-direction: column; gap: 10px; }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn {
+  height: 52px; border-radius: 14px; border: none;
+  font-size: 1rem; font-weight: 700; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  transition: opacity 0.15s, transform 0.1s;
+  color: var(--text-inv);
+}
+.btn:active:not(:disabled) { transform: scale(0.96); }
+.btn:disabled { opacity: 0.45; cursor: default; }
+#btnStop { background: var(--btn-stop-bg); }
+#btnStart { background: var(--btn-start-bg); }
+.dur-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.dur-btn {
+  height: 38px; border-radius: 10px; border: none;
+  font-size: 0.88rem; font-weight: 700; cursor: pointer;
+  background: var(--dur-inactive-bg); color: var(--drum-item);
+  transition: background 0.2s, color 0.2s, opacity 0.15s;
+}
+.dur-btn.active { background: var(--dur-active-bg); color: var(--text-inv); }
+.dur-btn:disabled { opacity: 0.45; cursor: default; }
+.drums-row {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
+  margin-top: 4px;
+}
+.drum-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+.drum-label { font-size: 0.72rem; font-weight: 700; color: var(--drum-label); text-transform: uppercase; letter-spacing: 0.04em; }
+.drum-container {
+  width: 100%; height: 150px; position: relative; overflow: hidden;
+  background: var(--drum-bg); border-radius: 14px;
+  touch-action: none;
+  transition: opacity 0.2s;
+}
+.drum-container.locked { opacity: 0.32; pointer-events: none; }
+.drum-track { position: absolute; left: 0; right: 0; will-change: transform; }
+.drum-item {
+  height: 50px; display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; font-weight: 700; color: var(--drum-item);
+  will-change: transform, opacity;
+}
+.drum-sel {
+  position: absolute; left: 10px; right: 10px; height: 50px; top: 50px;
+  border-radius: 10px; background: var(--drum-sel); pointer-events: none;
+}
+.drum-fade-top, .drum-fade-bottom {
+  position: absolute; left: 0; right: 0; height: 60px; pointer-events: none; z-index: 2;
+}
+.drum-fade-top { top: 0; background: linear-gradient(to bottom, var(--drum-bg), transparent); }
+.drum-fade-bottom { bottom: 0; background: linear-gradient(to top, var(--drum-bg), transparent); }
+</style>
+</head>
+<body>
+<div id="app">
+  <div class="header">
+    <button id="themeBtn">Sötét</button>
+  </div>
+  <div class="clock-area">
+    <div id="clock-wrap"></div>
+  </div>
+  <div class="controls">
+    <div class="btn-row">
+      <button class="btn" id="btnStop">⏹ Stop</button>
+      <button class="btn" id="btnStart">▶ Indít</button>
+    </div>
+    <div class="dur-row">
+      <button class="dur-btn" id="dur60">1:00</button>
+      <button class="dur-btn" id="dur90">1:30</button>
+    </div>
+    <div class="drums-row">
+      <div class="drum-col">
+        <span class="drum-label">Perc</span>
+        <div class="drum-container" id="drumMin"></div>
+      </div>
+      <div class="drum-col">
+        <span class="drum-label">Mp</span>
+        <div class="drum-container" id="drumSec"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Stopper – Inline JS */
+(() => {
+  "use strict";
+
+  let state = "idle";
+  let totalSec = 60;
+  let timeLeft = 60;
+  let customMin = 1;
+  let customSec = 0;
+  let lastSpoken = -1;
+  let tickTimer = null;
+  let finishTimer = null;
+  let ttsUnlocked = false;
+  let preferredVoice = null;
+  let isDark = false;
+
+  const STROKE_W = 11;
+  const KNOB_R = 9;
+  const DRUM_REPS = 9;
+  const ITEM_H = 50;
+  const FRICTION = 0.88;
+  const MIN_VEL = 0.4;
+  const SNAP_LERP = 0.28;
+  const SNAP_THRESH = 0.35;
+  const SEL_CENTER = 75;
+  const SEL_OFFSET_BASE = SEL_CENTER - ITEM_H / 2; // 50
+
+  const themeBtn = document.getElementById("themeBtn");
+  const clockWrap = document.getElementById("clock-wrap");
+  const btnStop = document.getElementById("btnStop");
+  const btnStart = document.getElementById("btnStart");
+  const dur60 = document.getElementById("dur60");
+  const dur90 = document.getElementById("dur90");
+  const drumMinEl = document.getElementById("drumMin");
+  const drumSecEl = document.getElementById("drumSec");
+
+  // ── Theme ──
+  function setTheme(dark) {
+    isDark = dark;
+    document.documentElement.setAttribute("data-theme", dark ? "dark" : "");
+    // Explicit bg set – iframe sandbox sometimes ignores CSS var inheritance
+    document.body.style.backgroundColor = dark ? "#1a1a24" : "#f2f2f7";
+    document.documentElement.style.backgroundColor = dark ? "#1a1a24" : "#f2f2f7";
+    themeBtn.textContent = dark ? "Világos" : "Sötét";
+    renderClock();
+  }
+  themeBtn.addEventListener("click", () => setTheme(!isDark));
+
+  // ── Clock ──
+  function getClockSize() {
+    const vp = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
+    return Math.max(80, Math.min(vp.width - 32, vp.height - 220));
+  }
+
+  function getCSS(v) {
+    return getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+  }
+
+  function renderClock() {
+    const sz = getClockSize();
+    const r = sz / 2 - STROKE_W - KNOB_R - 2;
+    const cx = sz / 2, cy = sz / 2;
+    const isAlert = timeLeft <= 10 && state !== "idle";
+    const arcColor = isAlert ? getCSS("--arc-alert") : getCSS("--arc-normal");
+    const trackColor = getCSS("--arc-track");
+    const frac = totalSec > 0 ? timeLeft / totalSec : 0;
+
+    let arcSvg = "";
+    let knobSvg = "";
+
+    if (frac > 0 && frac < 1) {
+      const angle = frac * 360;
+      const startRad = (-90 * Math.PI) / 180;
+      const endRad = ((-90 + angle) * Math.PI) / 180;
+      const sx = cx + r * Math.cos(startRad);
+      const sy = cy + r * Math.sin(startRad);
+      const kx = cx + r * Math.cos(endRad);
+      const ky = cy + r * Math.sin(endRad);
+      const largeArc = angle > 180 ? 1 : 0;
+      arcSvg = `<path d="M${sx},${sy} A${r},${r} 0 ${largeArc} 1 ${kx},${ky}" fill="none" stroke="${arcColor}" stroke-width="${STROKE_W}" stroke-linecap="round"/>`;
+      knobSvg = `<circle cx="${kx}" cy="${ky}" r="${KNOB_R}" fill="${arcColor}"/>`;
+    } else if (frac >= 1) {
+      // Full circle + knob at 12 o'clock (top)
+      arcSvg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${arcColor}" stroke-width="${STROKE_W}"/>`;
+      knobSvg = `<circle cx="${cx}" cy="${cy - r}" r="${KNOB_R}" fill="${arcColor}"/>`;
+    }
+
+    const digitSize = Math.max(14, sz * 0.21);
+    let digitText;
+    if (state === "finished") {
+      digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${r * 0.38}" font-weight="800" fill="${arcColor}">GO GO GO</text>`;
+    } else {
+      const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+      const ss = String(timeLeft % 60).padStart(2, "0");
+      digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${digitSize}" font-weight="800" fill="${arcColor}">${mm}:${ss}</text>`;
+    }
+
+    clockWrap.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}">
+      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${trackColor}" stroke-width="${STROKE_W}"/>
+      ${arcSvg}${knobSvg}${digitText}
+    </svg>`;
+  }
+
+  // ── Pointer on clock ──
+  let dragActive = false;
+  let dragTimeout = null;
+  let pointerDownTime = 0;
+  let pointerMoved = false;
+
+  clockWrap.addEventListener("pointerdown", (e) => {
+    e.preventDefault();
+    clockWrap.setPointerCapture(e.pointerId);
+    pointerDownTime = Date.now();
+    pointerMoved = false;
+    dragActive = false;
+
+    const rect = clockWrap.getBoundingClientRect();
+    const sz = getClockSize();
+    const r = sz / 2 - STROKE_W - KNOB_R - 2;
+    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
+    const px = e.clientX, py = e.clientY;
+
+    if (Math.hypot(px - cxS, py - cyS) > r + STROKE_W / 2) return;
+
+    const frac = totalSec > 0 ? timeLeft / totalSec : 0;
+    const endRad = ((-90 + frac * 360) * Math.PI) / 180;
+    const kx = cxS + r * Math.cos(endRad);
+    const ky = cyS + r * Math.sin(endRad);
+
+    if (Math.hypot(px - kx, py - ky) < 36 && state !== "finished") {
+      dragTimeout = setTimeout(() => {
+        if (pointerMoved) {
+          dragActive = true;
+          if (state === "running") stopTimer();
+        }
+      }, 200);
+    }
+  });
+
+  clockWrap.addEventListener("pointermove", (e) => {
+    pointerMoved = true;
+    if (!dragActive) return;
+    e.preventDefault();
+    const rect = clockWrap.getBoundingClientRect();
+    const sz = getClockSize();
+    const r = sz / 2 - STROKE_W - KNOB_R - 2;
+    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
+    let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
+    if (deg < 0) deg += 360;
+    timeLeft = Math.max(1, Math.min(totalSec, Math.round((deg / 360) * totalSec)));
+    renderClock();
+  });
+
+  clockWrap.addEventListener("pointerup", (e) => {
+    if (dragTimeout) { clearTimeout(dragTimeout); dragTimeout = null; }
+    if (dragActive) { dragActive = false; return; }
+    if (pointerMoved && Date.now() - pointerDownTime > 300) return;
+
+    const rect = clockWrap.getBoundingClientRect();
+    const sz = getClockSize();
+    const r = sz / 2 - STROKE_W - KNOB_R - 2;
+    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
+    if (Math.hypot(e.clientX - cxS, e.clientY - cyS) > r + STROKE_W / 2) return;
+
+    if (state === "running") stopTimer();
+    else if (state === "idle" || state === "paused") { unlockTTS(); startTimer(); }
+  });
+
+  // ── Timer ──
+  let lastTickTime = 0;
+
+  function startTimer() {
+    if (totalSec < 1) return;
+    if (state === "idle") { timeLeft = totalSec; lastSpoken = -1; }
+    state = "running";
+    lastTickTime = Date.now();
+    scheduleTick();
+    updateUI();
+  }
+
+  function scheduleTick() {
+    if (state !== "running") return;
+    const elapsed = Date.now() - lastTickTime;
+    tickTimer = setTimeout(tick, Math.max(10, 1000 - (elapsed % 1000)));
+  }
+
+  function tick() {
+    if (state !== "running") return;
+    lastTickTime = Date.now();
+    timeLeft--;
+    if (timeLeft <= 10 && timeLeft >= 1) speak(timeLeft);
+    if (timeLeft <= 0) {
+      timeLeft = 0; state = "finished"; speak(0);
+      renderClock(); updateUI();
+      finishTimer = setTimeout(resetToIdle, 5000);
+      return;
+    }
+    renderClock(); updateUI(); scheduleTick();
+  }
+
+  function stopTimer() {
+    clearTimeout(tickTimer); tickTimer = null;
+    state = "paused"; updateUI();
+  }
+
+  function resetToIdle() {
+    clearTimeout(tickTimer); clearTimeout(finishTimer);
+    tickTimer = null; finishTimer = null;
+    state = "idle"; timeLeft = totalSec; lastSpoken = -1;
+    renderClock(); updateUI();
+  }
+
+  // ── TTS ──
+  function unlockTTS() {
+    if (ttsUnlocked) return;
+    const u = new SpeechSynthesisUtterance("\u200b");
+    u.volume = 0; u.lang = "hu-HU";
+    speechSynthesis.speak(u); ttsUnlocked = true;
+  }
+  function findHuVoice() { return speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith("hu")) || null; }
+  speechSynthesis.addEventListener("voiceschanged", () => { preferredVoice = findHuVoice(); });
+  preferredVoice = findHuVoice();
+
+  const HU = {10:"tíz",9:"kilenc",8:"nyolc",7:"hét",6:"hat",5:"öt",4:"négy",3:"három",2:"kettő",1:"egy",0:"go go go"};
+  function speak(n) {
+    if (lastSpoken === n) return;
+    lastSpoken = n;
+    const w = HU[n]; if (!w) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(w);
+    u.lang = "hu-HU";
+    if (preferredVoice) u.voice = preferredVoice;
+    if (n === 0) u.rate = 0.85;
+    speechSynthesis.speak(u);
+  }
+
+  // ── UI ──
+  function updateUI() {
+    switch (state) {
+      case "idle":
+        btnStop.style.visibility = "hidden"; btnStop.textContent = "⏹ Stop";
+        btnStart.textContent = "▶ Indít"; btnStart.disabled = false; break;
+      case "running":
+        btnStop.style.visibility = "visible"; btnStop.textContent = "⏹ Stop";
+        btnStart.textContent = "▶ Indít"; btnStart.disabled = true; break;
+      case "paused":
+        btnStop.style.visibility = "visible"; btnStop.textContent = "↺ Reset";
+        btnStart.textContent = "▶ Folytat"; btnStart.disabled = false; break;
+      case "finished":
+        btnStop.style.visibility = "visible"; btnStop.textContent = "↺ Reset";
+        btnStart.textContent = "▶ Indít"; btnStart.disabled = true; break;
+    }
+    const durDis = state === "running";
+    dur60.disabled = durDis; dur90.disabled = durDis;
+    dur60.classList.toggle("active", totalSec === 60);
+    dur90.classList.toggle("active", totalSec === 90);
+
+    const drumLocked = state === "running";
+    drumMinEl.classList.toggle("locked", drumLocked);
+    drumSecEl.classList.toggle("locked", drumLocked || customMin === 60);
+    renderClock();
+  }
+
+  // ── Buttons ──
+  btnStop.addEventListener("click", () => {
+    if (state === "running") stopTimer();
+    else if (state === "paused" || state === "finished") resetToIdle();
+  });
+  btnStart.addEventListener("click", () => {
+    if (state === "idle" || state === "paused") { unlockTTS(); startTimer(); }
+  });
+
+  // ── Quick duration ──
+  function setDuration(sec) {
+    if (state === "running") return;
+    if (state === "paused" || state === "finished") {
+      clearTimeout(tickTimer); clearTimeout(finishTimer);
+      tickTimer = null; finishTimer = null;
+      state = "idle"; lastSpoken = -1;
+    }
+    totalSec = sec; timeLeft = sec;
+    customMin = Math.floor(sec / 60); customSec = sec % 60;
+    minDrum.scrollToValue(customMin, true);
+    secDrum.scrollToValue(customSec, true);
+    updateUI();
+  }
+  dur60.addEventListener("click", () => setDuration(60));
+  dur90.addEventListener("click", () => setDuration(90));
+
+  // ── Drum ──
+  class Drum {
+    constructor(el, count, onChange, onSettled) {
+      this.el = el;
+      this.count = count;
+      this.onChange = onChange;
+      this.onSettled = onSettled || null;
+      this.totalItems = count * DRUM_REPS;
+      this.offset = 0;
+      this.value = 0;
+      this.velocity = 0;
+      this.animFrame = null;
+      this.isDragging = false;
+      this.lastY = 0;
+      this.lastTime = 0;
+      this.build();
+      this.bind();
+    }
+
+    _offsetForIndex(idx) { return SEL_OFFSET_BASE - idx * ITEM_H; }
+    _indexFromOffset() { return Math.round((SEL_OFFSET_BASE - this.offset) / ITEM_H); }
+
+    build() {
+      this.el.innerHTML = "";
+      const sel = document.createElement("div"); sel.className = "drum-sel"; this.el.appendChild(sel);
+      this.track = document.createElement("div"); this.track.className = "drum-track";
+      for (let i = 0; i < this.totalItems; i++) {
+        const d = document.createElement("div"); d.className = "drum-item";
+        d.textContent = String(i % this.count).padStart(2, "0");
+        this.track.appendChild(d);
+      }
+      this.el.appendChild(this.track);
+      const ft = document.createElement("div"); ft.className = "drum-fade-top";
+      const fb = document.createElement("div"); fb.className = "drum-fade-bottom";
+      this.el.appendChild(ft); this.el.appendChild(fb);
+    }
+
+    bind() {
+      this.el.addEventListener("pointerdown", (e) => this.onDown(e));
+      this.el.addEventListener("pointermove", (e) => this.onMove(e));
+      this.el.addEventListener("pointerup", () => this.onUp());
+      this.el.addEventListener("pointercancel", () => this.onUp());
+    }
+
+    onDown(e) {
+      if (state === "running") return;
+      e.preventDefault();
+      this.el.setPointerCapture(e.pointerId);
+      this.isDragging = true;
+      this.lastY = e.clientY;
+      this.lastTime = Date.now();
+      this.velocity = 0;
+      if (this.animFrame) { cancelAnimationFrame(this.animFrame); this.animFrame = null; }
+    }
+
+    onMove(e) {
+      if (!this.isDragging) return;
+      e.preventDefault();
+      const now = Date.now();
+      const dy = e.clientY - this.lastY;
+      const dt = now - this.lastTime;
+      if (dt > 0) this.velocity = dy / dt;
+      this.lastY = e.clientY;
+      this.lastTime = now;
+      this.offset += dy;
+      this._normalize();
+      this._renderItems();
+      this._emitValue();
+    }
+
+    onUp() {
+      if (!this.isDragging) return;
+      this.isDragging = false;
+      this._startInertia();
+    }
+
+    _normalize() {
+      const oneRepH = this.count * ITEM_H;
+      const idx = this._indexFromOffset();
+      if (idx < this.count) this.offset -= oneRepH;
+      else if (idx >= this.totalItems - this.count) this.offset += oneRepH;
+    }
+
+    _startInertia() {
+      let vel = this.velocity * 80;
+      const step = () => {
+        vel *= FRICTION;
+        if (Math.abs(vel) < MIN_VEL) { this._snapNearest(); return; }
+        this.offset += vel;
+        this._normalize();
+        this._renderItems();
+        this._emitValue();
+        this.animFrame = requestAnimationFrame(step);
+      };
+      this.animFrame = requestAnimationFrame(step);
+    }
+
+    _snapNearest() {
+      const idx = this._indexFromOffset();
+      const target = this._offsetForIndex(idx);
+      const animate = () => {
+        const delta = target - this.offset;
+        if (Math.abs(delta) < SNAP_THRESH) {
+          this.offset = target;
+          this._renderItems(); this._emitValue();
+          if (this.onSettled) this.onSettled(this.value);
+          return;
+        }
+        this.offset += delta * SNAP_LERP;
+        this._renderItems();
+        this.animFrame = requestAnimationFrame(animate);
+      };
+      this.animFrame = requestAnimationFrame(animate);
+    }
+
+    _emitValue() {
+      const idx = this._indexFromOffset();
+      const val = ((idx % this.count) + this.count) % this.count;
+      if (val !== this.value) { this.value = val; this.onChange(val); }
+    }
+
+    _renderItems() {
+      this.track.style.transform = `translateY(${this.offset}px)`;
+      const ch = this.track.children;
+      for (let i = 0; i < ch.length; i++) {
+        const itemCY = this.offset + i * ITEM_H + ITEM_H / 2;
+        const slots = Math.abs(itemCY - SEL_CENTER) / ITEM_H;
+        let op, sc;
+        if (slots < 0.5) { op = 1; sc = 1.18; }
+        else if (slots < 1.5) { op = 0.55; sc = 1; }
+        else if (slots < 2.5) { op = 0.22; sc = 1; }
+        else { op = 0.07; sc = 1; }
+        ch[i].style.opacity = op;
+        ch[i].style.transform = `scale(${sc})`;
+      }
+    }
+
+    scrollToValue(val, animated) {
+      if (this.animFrame) { cancelAnimationFrame(this.animFrame); this.animFrame = null; }
+      const midRep = Math.floor(DRUM_REPS / 2);
+      const idx = midRep * this.count + val;
+      const target = this._offsetForIndex(idx);
+      if (animated) {
+        const animate = () => {
+          const delta = target - this.offset;
+          if (Math.abs(delta) < SNAP_THRESH) {
+            this.offset = target; this.value = val; this._renderItems(); return;
+          }
+          this.offset += delta * SNAP_LERP;
+          this._renderItems();
+          this.animFrame = requestAnimationFrame(animate);
+        };
+        this.animFrame = requestAnimationFrame(animate);
+      } else {
+        this.offset = target; this.value = val; this._renderItems();
+      }
+    }
+  }
+
+  // ── Create drums ──
+  const minDrum = new Drum(drumMinEl, 61, (val) => {
+    customMin = val;
+    applyDrumValues();
+  }, (finalVal) => {
+    // onSettled: only when drum fully stops at 60 → lock & reset sec
+    if (finalVal === 60 && customSec !== 0) {
+      customSec = 0;
+      secDrum.scrollToValue(0, true);
+      applyDrumValues();
+    }
+    updateUI(); // refresh sec drum lock state
+  });
+  const secDrum = new Drum(drumSecEl, 60, (val) => {
+    customSec = val;
+    applyDrumValues();
+  });
+
+  function applyDrumValues() {
+    if (state === "paused" || state === "finished") {
+      clearTimeout(tickTimer); clearTimeout(finishTimer);
+      tickTimer = null; finishTimer = null;
+      state = "idle"; lastSpoken = -1;
+    }
+    if (state !== "idle") return;
+    let sec = customMin * 60 + customSec;
+    sec = Math.max(1, Math.min(3600, sec));
+    totalSec = sec; timeLeft = sec;
+    updateUI();
+  }
+
+  // ── Init & Resize ──
+  minDrum.scrollToValue(1, false);
+  secDrum.scrollToValue(0, false);
+  updateUI(); renderClock();
+
+  let resizeRaf = null;
+  function onResize() {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => { resizeRaf = null; renderClock(); });
+  }
+  window.addEventListener("resize", onResize);
+  if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
+})();
+</script>
+
+</body>
+</html>
