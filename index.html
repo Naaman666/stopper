@@ -64,7 +64,24 @@ html, body {
   height: 100%;
   padding: 10px 20px 80px;
 }
-.header { display: flex; justify-content: flex-end; align-items: center; padding: 8px 0; }
+.header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
+.swatch-row { display: flex; gap: 8px; align-items: center; }
+.swatch {
+  width: 26px; height: 26px; border-radius: 8px; border: none; cursor: pointer;
+  position: relative; transition: transform 0.15s, box-shadow 0.15s;
+  flex-shrink: 0;
+}
+.swatch:active { transform: scale(0.88); }
+.swatch.active {
+  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--swatch-color);
+}
+.swatch::after {
+  content: ""; display: none; position: absolute;
+  left: 50%; top: 50%; transform: translate(-50%, -54%) rotate(45deg);
+  width: 5px; height: 9px;
+  border-right: 2.5px solid #fff; border-bottom: 2.5px solid #fff;
+}
+.swatch.active::after { display: block; }
 #themeBtn {
   border-radius: 20px; font-size: 0.78rem; font-weight: 700;
   border: 2px solid var(--arc-normal); background: transparent;
@@ -146,6 +163,10 @@ html, body {
 <body>
 <div id="app">
   <div class="header">
+    <div class="swatch-row" aria-label="Szín téma">
+      <button class="swatch active" id="swatchPurple" style="background:#7c6af7;--swatch-color:#7c6af7" aria-label="Lila téma" aria-pressed="true"></button>
+      <button class="swatch" id="swatchGreen" style="background:#2cc76a;--swatch-color:#2cc76a" aria-label="Zöld téma" aria-pressed="false"></button>
+    </div>
     <button id="themeBtn" aria-label="Téma váltása sötétre" aria-pressed="false">Sötét</button>
   </div>
   <div class="clock-area">
@@ -190,6 +211,55 @@ html, body {
   let ttsUnlocked = false;
   let preferredVoice = null;
   let isDark = false;
+  let currentPalette = "purple";
+
+  const PALETTES = {
+    purple: {
+      light: {
+        "--arc-normal": "#7c6af7", "--btn-start-bg": "#7c6af7",
+        "--dur-active-bg": "#7c6af7", "--dur-inactive-bg": "#e2e0f8",
+        "--drum-sel": "rgba(124,106,247,0.2)", "--drum-item": "#3d33a8",
+        "--drum-dim": "rgba(61,51,168,0.22)", "--drum-label": "#7c6af7",
+      },
+      dark: {
+        "--arc-normal": "#6857e8", "--btn-start-bg": "#5a4fcf",
+        "--dur-active-bg": "#5a4fcf", "--dur-inactive-bg": "#252336",
+        "--drum-sel": "rgba(104,87,232,0.3)", "--drum-item": "#e8e6ff",
+        "--drum-dim": "rgba(232,230,255,0.18)", "--drum-label": "#8b7ff0",
+      }
+    },
+    green: {
+      light: {
+        "--arc-normal": "#2cc76a", "--btn-start-bg": "#2cc76a",
+        "--dur-active-bg": "#2cc76a", "--dur-inactive-bg": "#ccf2da",
+        "--drum-sel": "rgba(44,199,106,0.2)", "--drum-item": "#166b38",
+        "--drum-dim": "rgba(22,107,56,0.22)", "--drum-label": "#2cc76a",
+      },
+      dark: {
+        "--arc-normal": "#25a858", "--btn-start-bg": "#1e8f4a",
+        "--dur-active-bg": "#1e8f4a", "--dur-inactive-bg": "#162a1e",
+        "--drum-sel": "rgba(44,199,106,0.3)", "--drum-item": "#b2f5ce",
+        "--drum-dim": "rgba(178,245,206,0.18)", "--drum-label": "#3dd475",
+      }
+    }
+  };
+
+  function applyPalette(name) {
+    currentPalette = name;
+    const vars = PALETTES[name][isDark ? "dark" : "light"];
+    const root = document.documentElement;
+    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+    // Update theme-color meta
+    const tc = document.querySelector('meta[name="theme-color"]');
+    if (tc) tc.setAttribute("content", PALETTES[name].light["--arc-normal"]);
+    // Update swatch active state
+    document.getElementById("swatchPurple").classList.toggle("active", name === "purple");
+    document.getElementById("swatchPurple").setAttribute("aria-pressed", name === "purple" ? "true" : "false");
+    document.getElementById("swatchGreen").classList.toggle("active", name === "green");
+    document.getElementById("swatchGreen").setAttribute("aria-pressed", name === "green" ? "true" : "false");
+    try { localStorage.setItem("stopper_palette", name); } catch(e) {}
+    renderClock();
+  }
 
   // Timer accuracy: anchor point for drift-free countdown
   let timerStartAt = 0;
@@ -242,7 +312,7 @@ html, body {
     themeBtn.setAttribute("aria-label", dark ? "Téma váltása világosra" : "Téma váltása sötétre");
     themeBtn.setAttribute("aria-pressed", dark ? "true" : "false");
     try { localStorage.setItem("stopper_theme", dark ? "dark" : "light"); } catch(e) {}
-    renderClock();
+    applyPalette(currentPalette);
   }
   themeBtn.addEventListener("click", () => setTheme(!isDark));
 
@@ -783,10 +853,20 @@ html, body {
     updateUI();
   }
 
+  // ── Swatch click handlers ──
+  document.getElementById("swatchPurple").addEventListener("click", () => applyPalette("purple"));
+  document.getElementById("swatchGreen").addEventListener("click", () => applyPalette("green"));
+
   // ── Init ──
   // Load saved theme
   try {
     if (localStorage.getItem("stopper_theme") === "dark") isDark = true;
+  } catch(e) {}
+
+  // Load saved palette
+  try {
+    const p = localStorage.getItem("stopper_palette");
+    if (p === "purple" || p === "green") currentPalette = p;
   } catch(e) {}
 
   // Load saved preset
@@ -798,7 +878,7 @@ html, body {
 
   minDrum.scrollToValue(customMin, false);
   secDrum.scrollToValue(customSec, false);
-  setTheme(isDark);
+  setTheme(isDark); // sets dark/light vars, then calls applyPalette internally
   updateUI();
 
   let resizeRaf = null;
