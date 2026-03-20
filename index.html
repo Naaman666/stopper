@@ -62,7 +62,7 @@ html, body {
   max-width: 480px;
   margin: 0 auto;
   height: 100%;
-  padding: 10px 20px 80px;
+  padding: max(10px, env(safe-area-inset-top)) 20px max(80px, calc(60px + env(safe-area-inset-bottom)));
 }
 .header { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; }
 .swatch-row { display: flex; gap: 8px; align-items: center; }
