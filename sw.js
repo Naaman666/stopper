@@ -1,5 +1,5 @@
 /* Stopper – Service Worker */
-const CACHE = "stopper-v1";
+const CACHE = "stopper-v2";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {
@@ -17,7 +17,17 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
-  e.respondWith(
-    caches.match(e.request).then(r => r || fetch(e.request))
-  );
+  if (e.request.mode === "navigate") {
+    // index.html: mindig hálózatról, offline esetén cache fallback
+    e.respondWith(
+      fetch(e.request).then(r => {
+        const clone = r.clone();
+        caches.open(CACHE).then(c => c.put(e.request, clone));
+        return r;
+      }).catch(() => caches.match(e.request))
+    );
+  } else {
+    // Egyéb fájlok (manifest, ikon): cache-first
+    e.respondWith(caches.match(e.request).then(r => r || fetch(e.request)));
+  }
 });
