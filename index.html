@@ -20,6 +20,7 @@
   --btn-start-bg: #7c6af7;
   --dur-active-bg: #7c6af7;
   --dur-inactive-bg: #e2e0f8;
+  --dur-cursor-bg: #d0ccf8;
   --drum-bg: #e2e0f8;
   --drum-sel: rgba(124,106,247,0.2);
   --drum-item: #3d33a8;
@@ -37,6 +38,7 @@
   --btn-start-bg: #5a4fcf;
   --dur-active-bg: #5a4fcf;
   --dur-inactive-bg: #252336;
+  --dur-cursor-bg: #302b4a;
   --drum-bg: #252336;
   --drum-sel: rgba(104,87,232,0.3);
   --drum-item: #e8e6ff;
@@ -109,10 +111,10 @@ html, body {
 .preset-row { display: flex; gap: 10px; align-items: center; }
 .preset-save-btn {
   flex-shrink: 0; width: 60px; height: 38px;
-  border-radius: 10px; border: none;
+  border-radius: 10px; border: 2px solid var(--arc-normal);
   font-size: 0.75rem; font-weight: 700; cursor: pointer;
-  background: var(--dur-inactive-bg); color: var(--drum-item);
-  transition: background 0.15s, opacity 0.15s;
+  background: var(--dur-inactive-bg); color: var(--arc-normal);
+  transition: background 0.15s, opacity 0.15s, border-color 0.3s, color 0.3s;
 }
 .preset-save-btn:active:not(:disabled) { opacity: 0.7; }
 .preset-save-btn:disabled { opacity: 0.45; cursor: default; }
@@ -128,7 +130,7 @@ html, body {
   background: var(--dur-inactive-bg); color: var(--drum-item);
   transition: background 0.2s, color 0.2s, opacity 0.15s, border-color 0.2s;
 }
-.preset-slot.cursor { border-color: var(--arc-normal); }
+.preset-slot.cursor { border-color: var(--arc-normal); background: var(--dur-cursor-bg); }
 .preset-slot.active { background: var(--dur-active-bg); color: var(--text-inv); border-color: transparent; }
 .preset-slot.empty { opacity: 0.4; }
 .preset-slot:disabled { opacity: 0.45; cursor: default; }
@@ -196,7 +198,7 @@ html, body {
       <button class="btn" id="btnStart" aria-label="Indítás">▶ Indít</button>
     </div>
     <div class="preset-row">
-      <button class="preset-save-btn" id="btnSavePreset" aria-label="Mentés az aktív helyre">Ment</button>
+      <button class="preset-save-btn" id="btnSavePreset" aria-label="Mentés az aktív helyre">Save</button>
       <div class="preset-scroll" id="presetScroll" role="listbox" aria-label="Előbeállított idők"></div>
     </div>
     <div class="drums-row">
@@ -230,18 +232,20 @@ html, body {
   let preferredVoice = null;
   let isDark = false;
   let currentPalette = "purple";
+  // Brave compat: CSS vars gyorsítótára, kerüli a getComputedStyle() blokkolást
+  let ccNormal = "#7c6af7", ccTrack = "#1c1c2e", ccAlert = "#ff3b30";
 
   const PALETTES = {
     purple: {
       light: {
         "--arc-normal": "#7c6af7", "--btn-start-bg": "#7c6af7",
-        "--dur-active-bg": "#7c6af7", "--dur-inactive-bg": "#e2e0f8",
+        "--dur-active-bg": "#7c6af7", "--dur-inactive-bg": "#e2e0f8", "--dur-cursor-bg": "#d0ccf8",
         "--drum-sel": "rgba(124,106,247,0.2)", "--drum-item": "#3d33a8",
         "--drum-dim": "rgba(61,51,168,0.22)", "--drum-label": "#7c6af7",
       },
       dark: {
         "--arc-normal": "#6857e8", "--btn-start-bg": "#5a4fcf",
-        "--dur-active-bg": "#5a4fcf", "--dur-inactive-bg": "#252336",
+        "--dur-active-bg": "#5a4fcf", "--dur-inactive-bg": "#252336", "--dur-cursor-bg": "#302b4a",
         "--drum-sel": "rgba(104,87,232,0.3)", "--drum-item": "#e8e6ff",
         "--drum-dim": "rgba(232,230,255,0.18)", "--drum-label": "#8b7ff0",
       }
@@ -249,13 +253,13 @@ html, body {
     green: {
       light: {
         "--arc-normal": "#2cc76a", "--btn-start-bg": "#2cc76a",
-        "--dur-active-bg": "#2cc76a", "--dur-inactive-bg": "#ccf2da",
+        "--dur-active-bg": "#2cc76a", "--dur-inactive-bg": "#ccf2da", "--dur-cursor-bg": "#b0eac4",
         "--drum-sel": "rgba(44,199,106,0.2)", "--drum-item": "#166b38",
         "--drum-dim": "rgba(22,107,56,0.22)", "--drum-label": "#2cc76a",
       },
       dark: {
         "--arc-normal": "#25a858", "--btn-start-bg": "#1e8f4a",
-        "--dur-active-bg": "#1e8f4a", "--dur-inactive-bg": "#162a1e",
+        "--dur-active-bg": "#1e8f4a", "--dur-inactive-bg": "#162a1e", "--dur-cursor-bg": "#1a3526",
         "--drum-sel": "rgba(44,199,106,0.3)", "--drum-item": "#b2f5ce",
         "--drum-dim": "rgba(178,245,206,0.18)", "--drum-label": "#3dd475",
       }
@@ -267,6 +271,7 @@ html, body {
     const vars = PALETTES[name][isDark ? "dark" : "light"];
     const root = document.documentElement;
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
+    ccNormal = vars["--arc-normal"];
     // Update theme-color meta
     const tc = document.querySelector('meta[name="theme-color"]');
     if (tc) tc.setAttribute("content", PALETTES[name].light["--arc-normal"]);
@@ -392,7 +397,7 @@ html, body {
       savePresets();
       renderPresets();
       btnSave.textContent = "OK!";
-      setTimeout(() => { btnSave.textContent = "Ment"; }, 800);
+      setTimeout(() => { btnSave.textContent = "Save"; }, 800);
     });
 
     renderPresets();
@@ -401,6 +406,8 @@ html, body {
   // ── Theme ──
   function setTheme(dark) {
     isDark = dark;
+    ccTrack = dark ? "#2e2c44" : "#1c1c2e";
+    ccAlert = dark ? "#cc2f26" : "#ff3b30";
     document.documentElement.setAttribute("data-theme", dark ? "dark" : "");
     document.body.style.backgroundColor = dark ? "#1a1a24" : "#f2f2f7";
     document.documentElement.style.backgroundColor = dark ? "#1a1a24" : "#f2f2f7";
@@ -433,8 +440,8 @@ html, body {
     const r = sz / 2 - STROKE_W - KNOB_R - 2;
     const cx = sz / 2, cy = sz / 2;
     const isAlert = timeLeft <= 10 && state !== "idle";
-    const arcColor = isAlert ? getCSS("--arc-alert") : getCSS("--arc-normal");
-    const trackColor = getCSS("--arc-track");
+    const arcColor = isAlert ? ccAlert : ccNormal;
+    const trackColor = ccTrack;
     const frac = totalSec > 0 ? timeLeft / totalSec : 0;
 
     let arcSvg = "";
