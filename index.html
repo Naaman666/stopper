@@ -123,11 +123,11 @@ html, body {
 }
 .preset-scroll::-webkit-scrollbar { display: none; }
 .preset-slot {
-  flex-shrink: 0; width: calc(50% - 4px); height: 38px;
+  flex-shrink: 0; width: calc(33.333% - 5.334px); height: 38px;
   border-radius: 10px; border: 2px solid transparent;
-  font-size: 0.88rem; font-weight: 700; cursor: pointer;
+  font-size: 0.82rem; font-weight: 700; cursor: pointer;
   background: var(--dur-inactive-bg); color: var(--drum-item);
-  scroll-snap-align: start;
+  scroll-snap-align: center;
   transition: background 0.2s, color 0.2s, opacity 0.15s, border-color 0.2s;
 }
 .preset-slot.cursor { border-color: var(--arc-normal); }
@@ -346,51 +346,97 @@ html, body {
     return `${p.min}:${String(p.sec).padStart(2, "0")}`;
   }
 
+  const P_COUNT = 10;   // valódi slotok száma
+  const P_COPIES = 5;   // ismétlések száma a végtelen görgetéshez
+  const P_TOTAL = P_COUNT * P_COPIES;
+
   function renderPresets() {
     const scroll = document.getElementById("presetScroll");
     if (!scroll) return;
-    const slots = scroll.querySelectorAll(".preset-slot");
-    slots.forEach((slot, i) => {
-      const p = presets[i];
+    scroll.querySelectorAll(".preset-slot").forEach((slot, i) => {
+      const ri = i % P_COUNT;
+      const p = presets[ri];
       slot.textContent = presetLabel(p);
-      slot.classList.toggle("cursor", i === presetCursorIdx);
+      slot.classList.toggle("cursor", ri === presetCursorIdx);
       slot.classList.toggle("active", !!p && totalSec === p.min * 60 + p.sec);
       slot.classList.toggle("empty", !p);
       slot.disabled = state === "running";
     });
+    const btnSave = document.getElementById("btnSavePreset");
+    if (btnSave) btnSave.disabled = state === "running";
   }
 
   function initPresetUI() {
     const scroll = document.getElementById("presetScroll");
     const btnSave = document.getElementById("btnSavePreset");
 
-    // Létrehozza a 10 slotot
-    for (let i = 0; i < 10; i++) {
+    // P_TOTAL db slot létrehozása (5 × 10 = 50)
+    for (let i = 0; i < P_TOTAL; i++) {
       const btn = document.createElement("button");
       btn.className = "preset-slot";
       btn.setAttribute("role", "option");
-      btn.setAttribute("aria-label", `Előbeállítás ${i + 1}`);
+      const ri = i % P_COUNT;
       btn.addEventListener("click", () => {
-        const p = presets[i];
-        if (!p) return;
-        setDuration(p.min * 60 + p.sec);
+        const p = presets[ri];
+        if (p) setDuration(p.min * 60 + p.sec);
       });
       scroll.appendChild(btn);
     }
 
-    // Scroll figyelés: melyik slot van középen/balra igazítva
+    function getStride() {
+      const slot = scroll.querySelector(".preset-slot");
+      return slot ? slot.offsetWidth + 8 : 0;
+    }
+
+    // Ugrás adott valódi indexre (a középső copy-ban)
+    function jumpToReal(ri, animated) {
+      const stride = getStride();
+      if (!stride) return;
+      // középső copy: leftmost = P_COUNT*2 + ri - 1 → középső = P_COUNT*2 + ri
+      const target = (P_COUNT * 2 + ri - 1) * stride;
+      if (!animated) scroll.style.scrollBehavior = "auto";
+      scroll.scrollLeft = target;
+      if (!animated) requestAnimationFrame(() => { scroll.style.scrollBehavior = ""; });
+    }
+
+    // Normalizálás: ha a szélekre ért, csendes visszaugrás az ekvivalens középső pozícióra
+    function normalize() {
+      const stride = getStride();
+      if (!stride) return;
+      const leftmost = Math.round(scroll.scrollLeft / stride);
+      if (leftmost < P_COUNT || leftmost >= P_COUNT * (P_COPIES - 1)) {
+        const ri = ((leftmost % P_COUNT) + P_COUNT) % P_COUNT;
+        const target = (P_COUNT * 2 + ri - 1) * stride;
+        scroll.style.scrollBehavior = "auto";
+        scroll.scrollLeft = target;
+        requestAnimationFrame(() => { scroll.style.scrollBehavior = ""; });
+      }
+    }
+
     scroll.addEventListener("scroll", () => {
-      const stride = scroll.clientWidth / 2 + 4;
-      presetCursorIdx = Math.max(0, Math.min(9, Math.round(scroll.scrollLeft / stride)));
+      const stride = getStride();
+      if (!stride) return;
+      const leftmost = Math.round(scroll.scrollLeft / stride);
+      // középső látható slot = leftmost + 1
+      presetCursorIdx = ((leftmost + 1) % P_COUNT + P_COUNT) % P_COUNT;
       renderPresets();
     }, { passive: true });
+
+    // Normalizálás scroll vége után
+    scroll.addEventListener("scrollend", normalize, { passive: true });
+    scroll.addEventListener("touchend", () => setTimeout(normalize, 400), { passive: true });
+
+    // Kezdeti pozíció: 0. slot középen
+    requestAnimationFrame(() => {
+      jumpToReal(0, false);
+      renderPresets();
+    });
 
     // Mentés gomb
     btnSave.addEventListener("click", () => {
       presets[presetCursorIdx] = { min: customMin, sec: customSec };
       savePresets();
       renderPresets();
-      // Rövid vizuális visszajelzés
       btnSave.textContent = "OK!";
       setTimeout(() => { btnSave.textContent = "Ment"; }, 800);
     });
@@ -716,8 +762,6 @@ html, body {
         btnStart.textContent = "▶ Indít"; btnStart.disabled = true;
         btnStart.setAttribute("aria-label", "Indítás"); break;
     }
-    const btnSave = document.getElementById("btnSavePreset");
-    if (btnSave) btnSave.disabled = state === "running";
     renderPresets();
 
     const drumLocked = state === "running";
