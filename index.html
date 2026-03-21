@@ -28,6 +28,8 @@
   --drum-label: #7c6af7;
   --text: #1c1c2e;
   --text-inv: #fff;
+  --save-clr: #7d2446;
+  --save-clr-light: #f3dce6;
 }
 [data-theme="dark"] {
   --bg: #1a1a24;
@@ -46,6 +48,8 @@
   --drum-label: #8b7ff0;
   --text: #e8e6ff;
   --text-inv: #fff;
+  --save-clr: #c4547a;
+  --save-clr-light: #3a1527;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
@@ -111,10 +115,10 @@ html, body {
 .preset-row { display: flex; gap: 10px; align-items: center; }
 .preset-save-btn {
   flex-shrink: 0; width: 60px; height: 38px;
-  border-radius: 10px; border: 2px solid var(--arc-normal);
+  border-radius: 10px; border: none;
   font-size: 0.75rem; font-weight: 700; cursor: pointer;
-  background: var(--dur-inactive-bg); color: var(--arc-normal);
-  transition: background 0.15s, opacity 0.15s, border-color 0.3s, color 0.3s;
+  background: var(--save-clr); color: #fff;
+  transition: background 0.15s, opacity 0.15s;
 }
 .preset-save-btn:active:not(:disabled) { opacity: 0.7; }
 .preset-save-btn:disabled { opacity: 0.45; cursor: default; }
@@ -130,7 +134,7 @@ html, body {
   background: var(--dur-inactive-bg); color: var(--drum-item);
   transition: background 0.2s, color 0.2s, opacity 0.15s, border-color 0.2s;
 }
-.preset-slot.cursor { border-color: var(--arc-normal); background: var(--dur-cursor-bg); }
+.preset-slot.cursor { border-color: var(--save-clr); background: var(--save-clr-light); color: var(--save-clr); }
 .preset-slot.active { background: var(--dur-active-bg); color: var(--text-inv); border-color: transparent; }
 .preset-slot.empty { opacity: 0.4; }
 .preset-slot:disabled { opacity: 0.45; cursor: default; }
@@ -384,13 +388,18 @@ html, body {
     }
 
     // Slot szélességét ResizeObserver-rel állítjuk (garantáltan a layout után)
-    const ro = new ResizeObserver(() => {
+    function updateSlotWidths() {
       const GAP = 8;
       const w = Math.floor((scroll.clientWidth - GAP * 2) / 3);
       if (w <= 0) return;
       scroll.querySelectorAll(".preset-slot").forEach(s => { s.style.width = w + "px"; });
-    });
-    ro.observe(scroll);
+    }
+    if (typeof ResizeObserver !== "undefined") {
+      try { new ResizeObserver(updateSlotWidths).observe(scroll); } catch(e) { updateSlotWidths(); }
+    } else {
+      updateSlotWidths();
+      window.addEventListener("resize", updateSlotWidths);
+    }
 
     btnSave.addEventListener("click", () => {
       presets[presetCursorIdx] = { min: customMin, sec: customSec };
@@ -417,7 +426,7 @@ html, body {
     try { localStorage.setItem("stopper_theme", dark ? "dark" : "light"); } catch(e) {}
     applyPalette(currentPalette);
   }
-  themeBtn.addEventListener("click", () => setTheme(!isDark));
+  if (themeBtn) themeBtn.addEventListener("click", () => setTheme(!isDark));
 
   // ── Clock ──
   function getClockSize() {
@@ -427,8 +436,9 @@ html, body {
       const w = area.clientWidth;
       if (h > 40 && w > 40) return Math.min(w, h) - 4;
     }
-    const vp = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
-    return Math.max(80, Math.min(vp.width - 32, vp.height - 220));
+    const vp = window.visualViewport || { width: window.innerWidth || 320, height: window.innerHeight || 568 };
+    const sz = Math.max(80, Math.min((vp.width || 320) - 32, (vp.height || 568) - 220));
+    return isNaN(sz) ? 200 : sz;
   }
 
   function getCSS(v) {
@@ -958,8 +968,8 @@ html, body {
   }
 
   // ── Swatch click handlers ──
-  document.getElementById("swatchPurple").addEventListener("click", () => applyPalette("purple"));
-  document.getElementById("swatchGreen").addEventListener("click", () => applyPalette("green"));
+  document.getElementById("swatchPurple")?.addEventListener("click", () => applyPalette("purple"));
+  document.getElementById("swatchGreen")?.addEventListener("click", () => applyPalette("green"));
 
   // ── Init ──
   // Load saved theme
@@ -981,23 +991,29 @@ html, body {
   const initSec = Math.max(1, Math.min(3600, customMin * 60 + customSec));
   totalSec = initSec; timeLeft = initSec;
 
-  minDrum.scrollToValue(customMin, false);
-  secDrum.scrollToValue(customSec, false);
-  setTheme(isDark); // sets dark/light vars, then calls applyPalette internally
-  initPresetUI();
-  updateUI();
+  // Dobos inicializálás – try-catch hogy egy hiba ne blokkolja a többit
+  try { minDrum.scrollToValue(customMin, false); } catch(e) {}
+  try { secDrum.scrollToValue(customSec, false); } catch(e) {}
+  try { setTheme(isDark); } catch(e) {}
+  try { initPresetUI(); } catch(e) {}
+  try { updateUI(); } catch(e) {}
+
+  // Clock visszaállítás biztonsági mentés – ha a renderClock() nem futott le
+  requestAnimationFrame(() => { try { renderClock(); } catch(e) {} });
+  window.addEventListener("load", () => { try { renderClock(); updateUI(); } catch(e) {} });
 
   // Clock újrarenderelés méretre – ResizeObserver a clock-area-n
   const clockArea = document.querySelector(".clock-area");
+  let resizeRaf = null;
+  function onResize() {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => { resizeRaf = null; try { renderClock(); } catch(e) {} });
+  }
   if (clockArea && typeof ResizeObserver !== "undefined") {
-    new ResizeObserver(() => renderClock()).observe(clockArea);
-  } else {
-    // fallback: window resize
-    let resizeRaf = null;
-    function onResize() {
-      if (resizeRaf) return;
-      resizeRaf = requestAnimationFrame(() => { resizeRaf = null; renderClock(); });
+    try { new ResizeObserver(onResize).observe(clockArea); } catch(e) {
+      window.addEventListener("resize", onResize);
     }
+  } else {
     window.addEventListener("resize", onResize);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
   }
