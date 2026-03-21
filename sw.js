@@ -1,5 +1,5 @@
 /* Stopper – Service Worker */
-const CACHE = "stopper-v3";
+const CACHE = "stopper-v4";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon.svg"];
 
 self.addEventListener("install", e => {

@@ -28,6 +28,8 @@
   --drum-label: #7c6af7;
   --text: #1c1c2e;
   --text-inv: #fff;
+  --save-clr: #7d2446;
+  --save-clr-light: #f3dce6;
 }
 [data-theme="dark"] {
   --bg: #1a1a24;
@@ -46,6 +48,8 @@
   --drum-label: #8b7ff0;
   --text: #e8e6ff;
   --text-inv: #fff;
+  --save-clr: #c4547a;
+  --save-clr-light: #3a1527;
 }
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html, body {
@@ -65,7 +69,7 @@ html, body {
   margin: 0 auto;
   height: 100%;
   overflow: hidden;
-  padding: max(4px, env(safe-area-inset-top)) 20px 0;
+  padding: max(10px, env(safe-area-inset-top)) 20px 0;
 }
 .header { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; flex-shrink: 0; }
 .swatch-row { display: flex; gap: 8px; align-items: center; }
@@ -111,10 +115,10 @@ html, body {
 .preset-row { display: flex; gap: 10px; align-items: center; }
 .preset-save-btn {
   flex-shrink: 0; width: 60px; height: 38px;
-  border-radius: 10px; border: 2px solid var(--arc-normal);
+  border-radius: 10px; border: none;
   font-size: 0.75rem; font-weight: 700; cursor: pointer;
-  background: var(--dur-inactive-bg); color: var(--arc-normal);
-  transition: background 0.15s, opacity 0.15s, border-color 0.3s, color 0.3s;
+  background: var(--save-clr); color: #fff;
+  transition: background 0.15s, opacity 0.15s;
 }
 .preset-save-btn:active:not(:disabled) { opacity: 0.7; }
 .preset-save-btn:disabled { opacity: 0.45; cursor: default; }
@@ -130,8 +134,9 @@ html, body {
   background: var(--dur-inactive-bg); color: var(--drum-item);
   transition: background 0.2s, color 0.2s, opacity 0.15s, border-color 0.2s;
 }
-.preset-slot.cursor { border-color: var(--arc-normal); background: var(--dur-cursor-bg); }
+.preset-slot.cursor { border-color: var(--save-clr); background: var(--save-clr-light); color: var(--save-clr); }
 .preset-slot.active { background: var(--dur-active-bg); color: var(--text-inv); border-color: transparent; }
+.preset-slot.cursor.active { border-color: var(--save-clr); }
 .preset-slot.empty { opacity: 0.4; }
 .preset-slot:disabled { opacity: 0.45; cursor: default; }
 .drums-row {
@@ -305,6 +310,29 @@ html, body {
   const btnStart = document.getElementById("btnStart");
   const drumMinEl = document.getElementById("drumMin");
   const drumSecEl = document.getElementById("drumSec");
+  // minDrum/secDrum: let, hogy try-catch-ben lehessen inicializálni
+  let minDrum = null, secDrum = null;
+
+  // ── Safety net: IIFE crash esetén is fut (function hoist miatt elérhető) ──
+  function updatePresetSlotWidths() {
+    const scroll = document.getElementById("presetScroll");
+    if (!scroll) return;
+    const GAP = 8;
+    const w = Math.floor((scroll.clientWidth - GAP * 2) / 3);
+    if (w <= 0) { setTimeout(updatePresetSlotWidths, 200); return; }
+    scroll.querySelectorAll(".preset-slot").forEach(s => { s.style.width = w + "px"; });
+  }
+  function fullRedraw() {
+    try { tryInitDrums(); } catch(e) {}
+    try { initPresetUI(); } catch(e) {}
+    try { updatePresetSlotWidths(); } catch(e) {}
+    try { renderClock(); } catch(e) {}
+    try { updateUI(); } catch(e) {}
+  }
+  window.addEventListener("load", fullRedraw);
+  setTimeout(fullRedraw, 200);
+  setTimeout(fullRedraw, 800);
+  setTimeout(fullRedraw, 1500);
 
   // ── Preset slots ──
   let presets = Array(10).fill(null);
@@ -369,6 +397,9 @@ html, body {
   function initPresetUI() {
     const scroll = document.getElementById("presetScroll");
     const btnSave = document.getElementById("btnSavePreset");
+    if (!scroll || !btnSave) return;
+    // Idempotent: ha már van slot, csak frissíti
+    if (scroll.querySelector(".preset-slot")) { renderPresets(); return; }
 
     for (let i = 0; i < P_COUNT; i++) {
       const btn = document.createElement("button");
@@ -383,14 +414,13 @@ html, body {
       scroll.appendChild(btn);
     }
 
-    // Slot szélességét ResizeObserver-rel állítjuk (garantáltan a layout után)
-    const ro = new ResizeObserver(() => {
-      const GAP = 8;
-      const w = Math.floor((scroll.clientWidth - GAP * 2) / 3);
-      if (w <= 0) return;
-      scroll.querySelectorAll(".preset-slot").forEach(s => { s.style.width = w + "px"; });
-    });
-    ro.observe(scroll);
+    // Slot szélesség ResizeObserver-rel (try-catch Brave kompatibilitáshoz)
+    if (typeof ResizeObserver !== "undefined") {
+      try { new ResizeObserver(updatePresetSlotWidths).observe(scroll); } catch(e) { updatePresetSlotWidths(); }
+    } else {
+      updatePresetSlotWidths();
+      window.addEventListener("resize", updatePresetSlotWidths);
+    }
 
     btnSave.addEventListener("click", () => {
       presets[presetCursorIdx] = { min: customMin, sec: customSec };
@@ -417,7 +447,7 @@ html, body {
     try { localStorage.setItem("stopper_theme", dark ? "dark" : "light"); } catch(e) {}
     applyPalette(currentPalette);
   }
-  themeBtn.addEventListener("click", () => setTheme(!isDark));
+  if (themeBtn) themeBtn.addEventListener("click", () => setTheme(!isDark));
 
   // ── Clock ──
   function getClockSize() {
@@ -436,6 +466,7 @@ html, body {
   }
 
   function renderClock() {
+    if (!clockWrap) return;
     const sz = getClockSize();
     const r = sz / 2 - STROKE_W - KNOB_R - 2;
     const cx = sz / 2, cy = sz / 2;
@@ -491,64 +522,66 @@ html, body {
   let pointerDownTime = 0;
   let pointerMoved = false;
 
-  clockWrap.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    clockWrap.setPointerCapture(e.pointerId);
-    pointerDownTime = Date.now();
-    pointerMoved = false;
-    dragActive = false;
+  try {
+    clockWrap.addEventListener("pointerdown", (e) => {
+      e.preventDefault();
+      try { clockWrap.setPointerCapture(e.pointerId); } catch(_) {}
+      pointerDownTime = Date.now();
+      pointerMoved = false;
+      dragActive = false;
 
-    const rect = clockWrap.getBoundingClientRect();
-    const sz = getClockSize();
-    const r = sz / 2 - STROKE_W - KNOB_R - 2;
-    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
-    const px = e.clientX, py = e.clientY;
+      const rect = clockWrap.getBoundingClientRect();
+      const sz = getClockSize();
+      const r = sz / 2 - STROKE_W - KNOB_R - 2;
+      const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
+      const px = e.clientX, py = e.clientY;
 
-    if (Math.hypot(px - cxS, py - cyS) > r + STROKE_W / 2) return;
+      if (Math.hypot(px - cxS, py - cyS) > r + STROKE_W / 2) return;
 
-    const frac = totalSec > 0 ? timeLeft / totalSec : 0;
-    const endRad = ((-90 + frac * 360) * Math.PI) / 180;
-    const kx = cxS + r * Math.cos(endRad);
-    const ky = cyS + r * Math.sin(endRad);
+      const frac = totalSec > 0 ? timeLeft / totalSec : 0;
+      const endRad = ((-90 + frac * 360) * Math.PI) / 180;
+      const kx = cxS + r * Math.cos(endRad);
+      const ky = cyS + r * Math.sin(endRad);
 
-    if (Math.hypot(px - kx, py - ky) < 36 && state !== "finished") {
-      dragTimeout = setTimeout(() => {
-        if (pointerMoved) {
-          dragActive = true;
-          if (state === "running") stopTimer();
-        }
-      }, 200);
-    }
-  });
+      if (Math.hypot(px - kx, py - ky) < 36 && state !== "finished") {
+        dragTimeout = setTimeout(() => {
+          if (pointerMoved) {
+            dragActive = true;
+            if (state === "running") stopTimer();
+          }
+        }, 200);
+      }
+    });
 
-  clockWrap.addEventListener("pointermove", (e) => {
-    pointerMoved = true;
-    if (!dragActive) return;
-    e.preventDefault();
-    const rect = clockWrap.getBoundingClientRect();
-    const sz = getClockSize();
-    const r = sz / 2 - STROKE_W - KNOB_R - 2;
-    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
-    let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
-    if (deg < 0) deg += 360;
-    timeLeft = Math.max(1, Math.min(totalSec, Math.round((deg / 360) * totalSec)));
-    renderClock();
-  });
+    clockWrap.addEventListener("pointermove", (e) => {
+      pointerMoved = true;
+      if (!dragActive) return;
+      e.preventDefault();
+      const rect = clockWrap.getBoundingClientRect();
+      const sz = getClockSize();
+      const r = sz / 2 - STROKE_W - KNOB_R - 2;
+      const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
+      let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
+      if (deg < 0) deg += 360;
+      timeLeft = Math.max(1, Math.min(totalSec, Math.round((deg / 360) * totalSec)));
+      renderClock();
+    });
 
-  clockWrap.addEventListener("pointerup", (e) => {
-    if (dragTimeout) { clearTimeout(dragTimeout); dragTimeout = null; }
-    if (dragActive) { dragActive = false; return; }
-    if (pointerMoved && Date.now() - pointerDownTime > 300) return;
+    clockWrap.addEventListener("pointerup", (e) => {
+      if (dragTimeout) { clearTimeout(dragTimeout); dragTimeout = null; }
+      if (dragActive) { dragActive = false; return; }
+      if (pointerMoved && Date.now() - pointerDownTime > 300) return;
 
-    const rect = clockWrap.getBoundingClientRect();
-    const sz = getClockSize();
-    const r = sz / 2 - STROKE_W - KNOB_R - 2;
-    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
-    if (Math.hypot(e.clientX - cxS, e.clientY - cyS) > r + STROKE_W / 2) return;
+      const rect = clockWrap.getBoundingClientRect();
+      const sz = getClockSize();
+      const r = sz / 2 - STROKE_W - KNOB_R - 2;
+      const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
+      if (Math.hypot(e.clientX - cxS, e.clientY - cyS) > r + STROKE_W / 2) return;
 
-    if (state === "running") stopTimer();
-    else if (state === "idle" || state === "paused") { unlockTTS(); startTimer(); }
-  });
+      if (state === "running") stopTimer();
+      else if (state === "idle" || state === "paused") { unlockTTS(); startTimer(); }
+    });
+  } catch(_) {}
 
   // ── Timer (drift-compensated via performance.now()) ──
   function startTimer() {
@@ -699,8 +732,8 @@ html, body {
     const sec = Math.max(1, Math.min(3600, totalSec + deltaSec));
     totalSec = sec; timeLeft = sec;
     customMin = Math.floor(sec / 60); customSec = sec % 60;
-    minDrum.scrollToValue(customMin, true);
-    secDrum.scrollToValue(customSec, true);
+    if (minDrum) minDrum.scrollToValue(customMin, true);
+    if (secDrum) secDrum.scrollToValue(customSec, true);
     savePreset();
     updateUI();
   }
@@ -743,11 +776,11 @@ html, body {
   }
 
   // ── Buttons ──
-  btnStop.addEventListener("click", () => {
+  if (btnStop) btnStop.addEventListener("click", () => {
     if (state === "running") stopTimer();
     else if (state === "paused" || state === "finished") resetToIdle();
   });
-  btnStart.addEventListener("click", () => {
+  if (btnStart) btnStart.addEventListener("click", () => {
     if (state === "idle" || state === "paused") { unlockTTS(); startTimer(); }
   });
 
@@ -761,8 +794,8 @@ html, body {
     }
     totalSec = sec; timeLeft = sec;
     customMin = Math.floor(sec / 60); customSec = sec % 60;
-    minDrum.scrollToValue(customMin, true);
-    secDrum.scrollToValue(customSec, true);
+    if (minDrum) minDrum.scrollToValue(customMin, true);
+    if (secDrum) secDrum.scrollToValue(customSec, true);
     savePreset();
     updateUI();
   }
@@ -784,6 +817,7 @@ html, body {
       this.lastTime = 0;
       this.build();
       this.bind();
+      this.scrollToValue(0, false); // Kezdeti renderelés garantálása
     }
 
     _offsetForIndex(idx) { return SEL_OFFSET_BASE - idx * ITEM_H; }
@@ -805,16 +839,40 @@ html, body {
     }
 
     bind() {
-      this.el.addEventListener("pointerdown", (e) => this.onDown(e));
-      this.el.addEventListener("pointermove", (e) => this.onMove(e));
-      this.el.addEventListener("pointerup", () => this.onUp());
-      this.el.addEventListener("pointercancel", () => this.onUp());
+      try {
+        this.el.addEventListener("pointerdown", (e) => this.onDown(e));
+        this.el.addEventListener("pointermove", (e) => this.onMove(e));
+        this.el.addEventListener("pointerup", () => this.onUp());
+        this.el.addEventListener("pointercancel", () => this.onUp());
+      } catch(_) {
+        try {
+          // Touch fallback ha Brave blokkolja a pointer event-eket
+          this.el.addEventListener("touchstart", (ev) => {
+            const t = ev.touches[0]; if (!t) return;
+            try { ev.preventDefault(); } catch(_2) {}
+            this.isDragging = true; this.lastY = t.clientY;
+            this.lastTime = Date.now(); this.velocity = 0;
+            if (this.animFrame) { cancelAnimationFrame(this.animFrame); this.animFrame = null; }
+          }, { passive: false });
+          this.el.addEventListener("touchmove", (ev) => {
+            if (!this.isDragging) return;
+            const t = ev.touches[0]; if (!t) return;
+            try { ev.preventDefault(); } catch(_2) {}
+            const now = Date.now(); const dy = t.clientY - this.lastY;
+            const dt = now - this.lastTime; if (dt > 0) this.velocity = dy / dt;
+            this.lastY = t.clientY; this.lastTime = now;
+            this.offset += dy; this._normalize(); this._renderItems(); this._emitValue();
+          }, { passive: false });
+          this.el.addEventListener("touchend", () => this.onUp(), { passive: true });
+          this.el.addEventListener("touchcancel", () => this.onUp(), { passive: true });
+        } catch(_2) {}
+      }
     }
 
     onDown(e) {
       if (state === "running") return;
-      e.preventDefault();
-      this.el.setPointerCapture(e.pointerId);
+      try { e.preventDefault(); } catch(_) {}
+      try { this.el.setPointerCapture(e.pointerId); } catch(_) {}
       this.isDragging = true;
       this.lastY = e.clientY;
       this.lastTime = Date.now();
@@ -927,21 +985,43 @@ html, body {
   }
 
   // ── Create drums ──
-  const minDrum = new Drum(drumMinEl, 61, (val) => {
-    customMin = val;
-    applyDrumValues();
-  }, (finalVal) => {
-    if (finalVal === 60 && customSec !== 0) {
-      customSec = 0;
-      secDrum.scrollToValue(0, true);
-      applyDrumValues();
+  try {
+    minDrum = new Drum(drumMinEl, 61, (val) => {
+      customMin = val; applyDrumValues();
+    }, (finalVal) => {
+      if (finalVal === 60 && customSec !== 0) {
+        customSec = 0; if (secDrum) secDrum.scrollToValue(0, true); applyDrumValues();
+      }
+      updateUI();
+    });
+  } catch(_) {}
+  try {
+    secDrum = new Drum(drumSecEl, 60, (val) => {
+      customSec = val; applyDrumValues();
+    });
+  } catch(_) {}
+
+  // ── Drum újraépítés ha az init sikertelen volt ──
+  function tryInitDrums() {
+    if (!minDrum && drumMinEl) {
+      try {
+        minDrum = new Drum(drumMinEl, 61,
+          (val) => { customMin = val; applyDrumValues(); },
+          (finalVal) => {
+            if (finalVal === 60 && customSec !== 0) {
+              customSec = 0; if (secDrum) secDrum.scrollToValue(0, true); applyDrumValues();
+            }
+            updateUI();
+          }
+        );
+      } catch(_) {}
     }
-    updateUI();
-  });
-  const secDrum = new Drum(drumSecEl, 60, (val) => {
-    customSec = val;
-    applyDrumValues();
-  });
+    if (!secDrum && drumSecEl) {
+      try { secDrum = new Drum(drumSecEl, 60, (val) => { customSec = val; applyDrumValues(); }); } catch(_) {}
+    }
+    try { if (minDrum) minDrum.scrollToValue(customMin, false); } catch(_) {}
+    try { if (secDrum) secDrum.scrollToValue(customSec, false); } catch(_) {}
+  }
 
   function applyDrumValues() {
     if (state === "paused" || state === "finished") {
@@ -958,8 +1038,8 @@ html, body {
   }
 
   // ── Swatch click handlers ──
-  document.getElementById("swatchPurple").addEventListener("click", () => applyPalette("purple"));
-  document.getElementById("swatchGreen").addEventListener("click", () => applyPalette("green"));
+  document.getElementById("swatchPurple")?.addEventListener("click", () => applyPalette("purple"));
+  document.getElementById("swatchGreen")?.addEventListener("click", () => applyPalette("green"));
 
   // ── Init ──
   // Load saved theme
@@ -981,23 +1061,25 @@ html, body {
   const initSec = Math.max(1, Math.min(3600, customMin * 60 + customSec));
   totalSec = initSec; timeLeft = initSec;
 
-  minDrum.scrollToValue(customMin, false);
-  secDrum.scrollToValue(customSec, false);
-  setTheme(isDark); // sets dark/light vars, then calls applyPalette internally
-  initPresetUI();
-  updateUI();
+  try { if (minDrum) minDrum.scrollToValue(customMin, false); } catch(e) {}
+  try { if (secDrum) secDrum.scrollToValue(customSec, false); } catch(e) {}
+  try { setTheme(isDark); } catch(e) {}
+  try { initPresetUI(); } catch(e) {}
+  try { updateUI(); } catch(e) {}
+
+  // Azonnali retry a clock-ra
+  requestAnimationFrame(() => { try { renderClock(); } catch(e) {} });
 
   // Clock újrarenderelés méretre – ResizeObserver a clock-area-n
   const clockArea = document.querySelector(".clock-area");
+  let resizeRaf = null;
+  function onResize() {
+    if (resizeRaf) return;
+    resizeRaf = requestAnimationFrame(() => { resizeRaf = null; try { renderClock(); } catch(e) {} });
+  }
   if (clockArea && typeof ResizeObserver !== "undefined") {
-    new ResizeObserver(() => renderClock()).observe(clockArea);
+    try { new ResizeObserver(onResize).observe(clockArea); } catch(e) { window.addEventListener("resize", onResize); }
   } else {
-    // fallback: window resize
-    let resizeRaf = null;
-    function onResize() {
-      if (resizeRaf) return;
-      resizeRaf = requestAnimationFrame(() => { resizeRaf = null; renderClock(); });
-    }
     window.addEventListener("resize", onResize);
     if (window.visualViewport) window.visualViewport.addEventListener("resize", onResize);
   }
