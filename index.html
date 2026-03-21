@@ -123,11 +123,11 @@ html, body {
 }
 .preset-scroll::-webkit-scrollbar { display: none; }
 .preset-slot {
-  flex-shrink: 0; width: calc(33.333% - 5.334px); height: 38px;
+  flex-shrink: 0; /* width JS-sel van beállítva */ height: 38px;
   border-radius: 10px; border: 2px solid transparent;
   font-size: 0.82rem; font-weight: 700; cursor: pointer;
   background: var(--dur-inactive-bg); color: var(--drum-item);
-  scroll-snap-align: center;
+  scroll-snap-align: start;
   transition: background 0.2s, color 0.2s, opacity 0.15s, border-color 0.2s;
 }
 .preset-slot.cursor { border-color: var(--arc-normal); }
@@ -369,6 +369,7 @@ html, body {
   function initPresetUI() {
     const scroll = document.getElementById("presetScroll");
     const btnSave = document.getElementById("btnSavePreset");
+    let slotW = 0; // pixel szélesség, JS számolja
 
     // P_TOTAL db slot létrehozása (5 × 10 = 50)
     for (let i = 0; i < P_TOTAL; i++) {
@@ -383,32 +384,36 @@ html, body {
       scroll.appendChild(btn);
     }
 
-    function getStride() {
-      const slot = scroll.querySelector(".preset-slot");
-      return slot ? slot.offsetWidth + 8 : 0;
+    // A slot szélességét a konténer látható szélességéből számoljuk (GAP=8px, 3 slot látható)
+    function applySlotWidths() {
+      const GAP = 8;
+      const containerW = scroll.clientWidth;
+      if (!containerW) return;
+      slotW = Math.floor((containerW - GAP * 2) / 3);
+      scroll.querySelectorAll(".preset-slot").forEach(s => { s.style.width = slotW + "px"; });
+      scroll.style.gap = GAP + "px";
     }
 
-    // Ugrás adott valódi indexre (a középső copy-ban)
-    function jumpToReal(ri, animated) {
+    function getStride() { return slotW + 8; }
+
+    function jumpToReal(ri) {
       const stride = getStride();
       if (!stride) return;
-      // középső copy: leftmost = P_COUNT*2 + ri - 1 → középső = P_COUNT*2 + ri
+      // ri slot a középső (visible 3 közül a 2.) legyen: leftmost = P_COUNT*2 + ri - 1
       const target = (P_COUNT * 2 + ri - 1) * stride;
-      if (!animated) scroll.style.scrollBehavior = "auto";
+      scroll.style.scrollBehavior = "auto";
       scroll.scrollLeft = target;
-      if (!animated) requestAnimationFrame(() => { scroll.style.scrollBehavior = ""; });
+      requestAnimationFrame(() => { scroll.style.scrollBehavior = ""; });
     }
 
-    // Normalizálás: ha a szélekre ért, csendes visszaugrás az ekvivalens középső pozícióra
     function normalize() {
       const stride = getStride();
       if (!stride) return;
       const leftmost = Math.round(scroll.scrollLeft / stride);
       if (leftmost < P_COUNT || leftmost >= P_COUNT * (P_COPIES - 1)) {
         const ri = ((leftmost % P_COUNT) + P_COUNT) % P_COUNT;
-        const target = (P_COUNT * 2 + ri - 1) * stride;
         scroll.style.scrollBehavior = "auto";
-        scroll.scrollLeft = target;
+        scroll.scrollLeft = (P_COUNT * 2 + ri - 1) * stride;
         requestAnimationFrame(() => { scroll.style.scrollBehavior = ""; });
       }
     }
@@ -417,19 +422,24 @@ html, body {
       const stride = getStride();
       if (!stride) return;
       const leftmost = Math.round(scroll.scrollLeft / stride);
-      // középső látható slot = leftmost + 1
       presetCursorIdx = ((leftmost + 1) % P_COUNT + P_COUNT) % P_COUNT;
       renderPresets();
     }, { passive: true });
 
-    // Normalizálás scroll vége után
     scroll.addEventListener("scrollend", normalize, { passive: true });
     scroll.addEventListener("touchend", () => setTimeout(normalize, 400), { passive: true });
 
-    // Kezdeti pozíció: 0. slot középen
+    // Kezdeti layout: szélességek beállítása, majd pozíció
     requestAnimationFrame(() => {
-      jumpToReal(0, false);
+      applySlotWidths();
+      jumpToReal(0);
       renderPresets();
+    });
+
+    // Resize esetén újraszámolja a szélességeket
+    window.addEventListener("resize", () => {
+      applySlotWidths();
+      jumpToReal(presetCursorIdx);
     });
 
     // Mentés gomb
