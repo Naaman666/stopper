@@ -118,8 +118,7 @@ html, body {
 .preset-save-btn:disabled { opacity: 0.45; cursor: default; }
 .preset-scroll {
   flex: 1; display: flex; gap: 8px;
-  overflow-x: auto; scroll-snap-type: x mandatory;
-  -webkit-overflow-scrolling: touch; scrollbar-width: none;
+  overflow-x: auto; -webkit-overflow-scrolling: touch; scrollbar-width: none;
 }
 .preset-scroll::-webkit-scrollbar { display: none; }
 .preset-slot {
@@ -127,7 +126,6 @@ html, body {
   border-radius: 10px; border: 2px solid transparent;
   font-size: 0.82rem; font-weight: 700; cursor: pointer;
   background: var(--dur-inactive-bg); color: var(--drum-item);
-  scroll-snap-align: start;
   transition: background 0.2s, color 0.2s, opacity 0.15s, border-color 0.2s;
 }
 .preset-slot.cursor { border-color: var(--arc-normal); }
@@ -346,18 +344,15 @@ html, body {
     return `${p.min}:${String(p.sec).padStart(2, "0")}`;
   }
 
-  const P_COUNT = 10;   // valódi slotok száma
-  const P_COPIES = 5;   // ismétlések száma a végtelen görgetéshez
-  const P_TOTAL = P_COUNT * P_COPIES;
+  const P_COUNT = 10;
 
   function renderPresets() {
     const scroll = document.getElementById("presetScroll");
     if (!scroll) return;
     scroll.querySelectorAll(".preset-slot").forEach((slot, i) => {
-      const ri = i % P_COUNT;
-      const p = presets[ri];
+      const p = presets[i];
       slot.textContent = presetLabel(p);
-      slot.classList.toggle("cursor", ri === presetCursorIdx);
+      slot.classList.toggle("cursor", i === presetCursorIdx);
       slot.classList.toggle("active", !!p && totalSec === p.min * 60 + p.sec);
       slot.classList.toggle("empty", !p);
       slot.disabled = state === "running";
@@ -369,80 +364,29 @@ html, body {
   function initPresetUI() {
     const scroll = document.getElementById("presetScroll");
     const btnSave = document.getElementById("btnSavePreset");
-    let slotW = 0; // pixel szélesség, JS számolja
 
-    // P_TOTAL db slot létrehozása (5 × 10 = 50)
-    for (let i = 0; i < P_TOTAL; i++) {
+    for (let i = 0; i < P_COUNT; i++) {
       const btn = document.createElement("button");
       btn.className = "preset-slot";
       btn.setAttribute("role", "option");
-      const ri = i % P_COUNT;
       btn.addEventListener("click", () => {
-        const p = presets[ri];
+        presetCursorIdx = i;
+        const p = presets[i];
         if (p) setDuration(p.min * 60 + p.sec);
+        renderPresets();
       });
       scroll.appendChild(btn);
     }
 
-    // A slot szélességét a konténer látható szélességéből számoljuk (GAP=8px, 3 slot látható)
-    function applySlotWidths() {
+    // Slot szélességét ResizeObserver-rel állítjuk (garantáltan a layout után)
+    const ro = new ResizeObserver(() => {
       const GAP = 8;
-      const containerW = scroll.clientWidth;
-      if (!containerW) return;
-      slotW = Math.floor((containerW - GAP * 2) / 3);
-      scroll.querySelectorAll(".preset-slot").forEach(s => { s.style.width = slotW + "px"; });
-      scroll.style.gap = GAP + "px";
-    }
-
-    function getStride() { return slotW + 8; }
-
-    function jumpToReal(ri) {
-      const stride = getStride();
-      if (!stride) return;
-      // ri slot a középső (visible 3 közül a 2.) legyen: leftmost = P_COUNT*2 + ri - 1
-      const target = (P_COUNT * 2 + ri - 1) * stride;
-      scroll.style.scrollBehavior = "auto";
-      scroll.scrollLeft = target;
-      requestAnimationFrame(() => { scroll.style.scrollBehavior = ""; });
-    }
-
-    function normalize() {
-      const stride = getStride();
-      if (!stride) return;
-      const leftmost = Math.round(scroll.scrollLeft / stride);
-      if (leftmost < P_COUNT || leftmost >= P_COUNT * (P_COPIES - 1)) {
-        const ri = ((leftmost % P_COUNT) + P_COUNT) % P_COUNT;
-        scroll.style.scrollBehavior = "auto";
-        scroll.scrollLeft = (P_COUNT * 2 + ri - 1) * stride;
-        requestAnimationFrame(() => { scroll.style.scrollBehavior = ""; });
-      }
-    }
-
-    scroll.addEventListener("scroll", () => {
-      const stride = getStride();
-      if (!stride) return;
-      const leftmost = Math.round(scroll.scrollLeft / stride);
-      presetCursorIdx = ((leftmost + 1) % P_COUNT + P_COUNT) % P_COUNT;
-      renderPresets();
-    }, { passive: true });
-
-    scroll.addEventListener("scrollend", normalize, { passive: true });
-    scroll.addEventListener("touchend", () => setTimeout(normalize, 400), { passive: true });
-
-    // Kezdeti layout: szélességek beállítása, majd pozíció
-    requestAnimationFrame(() => {
-      applySlotWidths();
-      jumpToReal(0);
-      renderPresets();
+      const w = Math.floor((scroll.clientWidth - GAP * 2) / 3);
+      if (w <= 0) return;
+      scroll.querySelectorAll(".preset-slot").forEach(s => { s.style.width = w + "px"; });
     });
+    ro.observe(scroll);
 
-    // Resize esetén újraszámolja a szélességeket
-    window.addEventListener("resize", () => {
-      applySlotWidths();
-      jumpToReal(presetCursorIdx);
-    });
-
-    // Mentés gomb
     btnSave.addEventListener("click", () => {
       presets[presetCursorIdx] = { min: customMin, sec: customSec };
       savePresets();
