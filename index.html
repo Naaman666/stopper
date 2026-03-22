@@ -467,10 +467,11 @@ html, body {
     const sz = getClockSize();
     const r = sz / 2 - STROKE_W - KNOB_R - 2;
     const cx = sz / 2, cy = sz / 2;
+    const displayTime = dragActive ? dragFloatTime : timeLeft;
     const isAlert = timeLeft <= 10 && (state !== "idle" || timeLeft < totalSec);
     const arcColor = isAlert ? ccAlert : ccNormal;
     const trackColor = ccTrack;
-    const frac = totalSec > 0 ? timeLeft / totalSec : 0;
+    const frac = totalSec > 0 ? displayTime / totalSec : 0;
 
     let arcSvg = "";
     let knobSvg = "";
@@ -516,6 +517,7 @@ html, body {
   // ── Pointer on clock ──
   let dragActive = false;
   let dragTimeout = null;
+  let dragFloatTime = 0; // tört másodperc drag közben (sima mozgás)
   let pointerDownTime = 0;
   let pointerMoved = false;
   let dragLastDeg = 0;
@@ -542,8 +544,11 @@ html, body {
     const ky = cyS + r * Math.sin(endRad);
 
     if (Math.hypot(px - kx, py - ky) < 60 && state !== "finished") {
-      // Knob aktuális szöge (fok, 0=12óra, CW növekvő)
-      dragLastDeg = frac * 360;
+      // Az ujj aktuális szöge (nem a knob-é!) – így nincs ugrás induláskor
+      let startDeg = Math.atan2(py - cyS, px - cxS) * (180 / Math.PI) + 90;
+      if (startDeg < 0) startDeg += 360;
+      dragLastDeg = startDeg;
+      dragFloatTime = timeLeft;
       dragTimeout = setTimeout(() => {
         if (pointerMoved) {
           dragActive = true;
@@ -555,31 +560,35 @@ html, body {
 
   clockWrap.addEventListener("pointermove", (e) => {
     pointerMoved = true;
-    if (!dragActive) return;
-    e.preventDefault();
     const rect = clockWrap.getBoundingClientRect();
     const sz = getClockSize();
     const r = sz / 2 - STROKE_W - KNOB_R - 2;
     const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
 
+    let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
+    if (deg < 0) deg += 360;
+
+    // Drag aktiválás előtt is frissítjük, hogy ne legyen ugrás
+    if (!dragActive) { dragLastDeg = deg; return; }
+    e.preventDefault();
+
     // Csak az ív közelében fogadjuk el a mozgást
     const dist = Math.hypot(e.clientX - cxS, e.clientY - cyS);
     if (Math.abs(dist - r) > KNOB_R * 3) return;
-
-    let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
-    if (deg < 0) deg += 360;
 
     // Szögirány ellenőrzése (delta: + = CW, - = CCW)
     let deltaDeg = deg - dragLastDeg;
     if (deltaDeg > 180) deltaDeg -= 360;
     else if (deltaDeg < -180) deltaDeg += 360;
 
-    dragLastDeg = deg;
-    // Relatív elmozdítás: a deltaDeg arányában módosítjuk a timeLeft-et
+    // Max 15° per event – nagy ugrások kiszűrése
+    deltaDeg = Math.max(-15, Math.min(15, deltaDeg));
+
+    // Tört másodperces számítás – sima ív mozgás
     const deltaSec = (deltaDeg / 360) * totalSec;
-    const newTimeLeft = Math.round(Math.max(1, Math.min(totalSec, timeLeft + deltaSec)));
-    if (newTimeLeft === timeLeft) return;
-    timeLeft = newTimeLeft;
+    dragFloatTime = Math.max(1, Math.min(totalSec, dragFloatTime + deltaSec));
+    dragLastDeg = deg;
+    timeLeft = Math.round(dragFloatTime);
     renderClock();
   });
 
