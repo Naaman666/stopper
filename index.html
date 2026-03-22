@@ -569,14 +569,17 @@ html, body {
     if (deltaDeg > 180) deltaDeg -= 360;
     else if (deltaDeg < -180) deltaDeg += 360;
 
-    // Csak CCW (csökkentés) irányba engedjük, CW mindig blokkolva
-    if (deltaDeg >= 0) return;
-
     dragLastDeg = deg;
     const newTimeLeft = Math.max(1, Math.min(totalSec, Math.round((deg / 360) * totalSec)));
-    // Ne lehessen áttekerni a 0-n: ha az új érték nagyobb mint az aktuális, akkor áttekertünk
-    if (newTimeLeft > timeLeft) {
+    // Ne lehessen áttekerni a 0-n (12 óra pozíció):
+    // ha CCW húzunk és az érték hirtelen megnő, vagy CW húzunk és hirtelen lecsökken → wrap-around
+    if (deltaDeg < 0 && newTimeLeft > timeLeft && timeLeft <= totalSec * 0.25) {
       timeLeft = 1;
+      renderClock();
+      return;
+    }
+    if (deltaDeg > 0 && newTimeLeft < timeLeft && timeLeft >= totalSec * 0.75) {
+      timeLeft = totalSec;
       renderClock();
       return;
     }
