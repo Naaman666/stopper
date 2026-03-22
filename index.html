@@ -516,7 +516,7 @@ html, body {
 
   // ── Pointer on clock ──
   let dragActive = false;
-  let dragTimeout = null;
+  let dragReady = false; // pointerdown a knob közelében történt
   let dragFloatTime = 0; // tört másodperc drag közben (sima mozgás)
   let pointerDownTime = 0;
   let pointerMoved = false;
@@ -528,7 +528,7 @@ html, body {
     pointerDownTime = Date.now();
     pointerMoved = false;
     dragActive = false;
-
+    dragReady = false;
 
     const rect = clockWrap.getBoundingClientRect();
     const sz = getClockSize();
@@ -549,12 +549,7 @@ html, body {
       if (startDeg < 0) startDeg += 360;
       dragLastDeg = startDeg;
       dragFloatTime = timeLeft;
-      dragTimeout = setTimeout(() => {
-        if (pointerMoved) {
-          dragActive = true;
-          if (state === "running") stopTimer();
-        }
-      }, 100);
+      dragReady = true; // készen áll – első move-nál aktiválódik
     }
   });
 
@@ -568,8 +563,14 @@ html, body {
     let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
     if (deg < 0) deg += 360;
 
-    // Drag aktiválás előtt is frissítjük, hogy ne legyen ugrás
-    if (!dragActive) { dragLastDeg = deg; return; }
+    // Ha dragReady de még nem aktív, az első move-nál aktiváljuk (0ms késleltetés)
+    if (!dragActive && dragReady) {
+      dragActive = true;
+      dragReady = false;
+      if (state === "running") stopTimer();
+      dragLastDeg = deg; // frissítjük, hogy ne legyen ugrás
+    }
+    if (!dragActive) return;
     e.preventDefault();
 
     // Szögirány ellenőrzése (delta: + = CW, - = CCW)
@@ -577,8 +578,8 @@ html, body {
     if (deltaDeg > 180) deltaDeg -= 360;
     else if (deltaDeg < -180) deltaDeg += 360;
 
-    // Max 30° per event – nagy ugrások kiszűrése, de ne lassítsa a követést
-    deltaDeg = Math.max(-30, Math.min(30, deltaDeg));
+    // Max 45° per event – csak az extrém ugrásokat szűrjük
+    deltaDeg = Math.max(-45, Math.min(45, deltaDeg));
 
     // Tört másodperces számítás – sima ív mozgás
     const deltaSec = (deltaDeg / 360) * totalSec;
@@ -589,7 +590,7 @@ html, body {
   });
 
   clockWrap.addEventListener("pointerup", (e) => {
-    if (dragTimeout) { clearTimeout(dragTimeout); dragTimeout = null; }
+    dragReady = false;
     if (dragActive) {
       dragActive = false;
       renderClock();
