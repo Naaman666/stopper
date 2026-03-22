@@ -467,7 +467,7 @@ html, body {
     const sz = getClockSize();
     const r = sz / 2 - STROKE_W - KNOB_R - 2;
     const cx = sz / 2, cy = sz / 2;
-    const isAlert = timeLeft <= 10 && state !== "idle";
+    const isAlert = timeLeft <= 10 && (state !== "idle" || timeLeft < totalSec);
     const arcColor = isAlert ? ccAlert : ccNormal;
     const trackColor = ccTrack;
     const frac = totalSec > 0 ? timeLeft / totalSec : 0;
@@ -518,6 +518,7 @@ html, body {
   let dragTimeout = null;
   let pointerDownTime = 0;
   let pointerMoved = false;
+  let dragStartedDecreasing = false;
 
   clockWrap.addEventListener("pointerdown", (e) => {
     e.preventDefault();
@@ -525,6 +526,7 @@ html, body {
     pointerDownTime = Date.now();
     pointerMoved = false;
     dragActive = false;
+    dragStartedDecreasing = false;
 
     const rect = clockWrap.getBoundingClientRect();
     const sz = getClockSize();
@@ -560,11 +562,13 @@ html, body {
     let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
     if (deg < 0) deg += 360;
     const newTimeLeft = Math.max(1, Math.min(totalSec, Math.round((deg / 360) * totalSec)));
-    // Csak csökkenteni lehet (óramutató járásával ellentétesen)
-    if (newTimeLeft < timeLeft) {
-      timeLeft = newTimeLeft;
-      renderClock();
+    // Első mozdulat csak csökkentés lehet, utána mindkét irányba szabad
+    if (!dragStartedDecreasing) {
+      if (newTimeLeft >= timeLeft) return;
+      dragStartedDecreasing = true;
     }
+    timeLeft = newTimeLeft;
+    renderClock();
   });
 
   clockWrap.addEventListener("pointerup", (e) => {
@@ -572,6 +576,7 @@ html, body {
     if (dragActive) {
       dragActive = false;
       renderClock();
+      updateUI();
       return;
     }
     if (pointerMoved && Date.now() - pointerDownTime > 300) return;
@@ -697,8 +702,13 @@ html, body {
   function updateUI() {
     switch (state) {
       case "idle":
-        btnStop.style.visibility = "hidden";
-        btnStop.textContent = "⏹ Stop"; btnStop.setAttribute("aria-label", "Stop");
+        if (timeLeft < totalSec) {
+          btnStop.style.visibility = "visible";
+          btnStop.textContent = "↺ Reset"; btnStop.setAttribute("aria-label", "Visszaállítás");
+        } else {
+          btnStop.style.visibility = "hidden";
+          btnStop.textContent = "⏹ Stop"; btnStop.setAttribute("aria-label", "Stop");
+        }
         btnStart.textContent = "▶ Indít"; btnStart.disabled = false;
         btnStart.setAttribute("aria-label", "Indítás"); break;
       case "running":
@@ -733,7 +743,7 @@ html, body {
   // ── Buttons ──
   btnStop.addEventListener("click", () => {
     if (state === "running") stopTimer();
-    else if (state === "paused" || state === "finished") resetToIdle();
+    else resetToIdle();
   });
   btnStart.addEventListener("click", () => {
     if (state === "idle" || state === "paused") { unlockTTS(); startTimer(); }
