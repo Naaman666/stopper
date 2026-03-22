@@ -574,10 +574,12 @@ html, body {
     if (deltaDeg > 180) deltaDeg -= 360;
     else if (deltaDeg < -180) deltaDeg += 360;
 
-    dragLastDeg = deg;
     // Relatív elmozdítás: a deltaDeg arányában módosítjuk a timeLeft-et
     const deltaSec = (deltaDeg / 360) * totalSec;
     const newTimeLeft = Math.round(Math.max(1, Math.min(totalSec, timeLeft + deltaSec)));
+    // dragLastDeg-et a knob tényleges szögéből számoljuk vissza,
+    // hogy ne halmozódjon kerekítési hiba
+    dragLastDeg = (newTimeLeft / totalSec) * 360;
     if (newTimeLeft === timeLeft) return;
     timeLeft = newTimeLeft;
     renderClock();
