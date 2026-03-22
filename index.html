@@ -561,6 +561,11 @@ html, body {
     const sz = getClockSize();
     const r = sz / 2 - STROKE_W - KNOB_R - 2;
     const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
+
+    // Csak az ív közelében fogadjuk el a mozgást
+    const dist = Math.hypot(e.clientX - cxS, e.clientY - cyS);
+    if (Math.abs(dist - r) > KNOB_R * 3) return;
+
     let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
     if (deg < 0) deg += 360;
 
