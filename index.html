@@ -575,19 +575,10 @@ html, body {
     else if (deltaDeg < -180) deltaDeg += 360;
 
     dragLastDeg = deg;
-    const newTimeLeft = Math.max(1, Math.min(totalSec, Math.round((deg / 360) * totalSec)));
-    // Ne lehessen áttekerni a 0-n (12 óra pozíció):
-    // ha CCW húzunk és az érték hirtelen megnő, vagy CW húzunk és hirtelen lecsökken → wrap-around
-    if (deltaDeg < 0 && newTimeLeft > timeLeft && timeLeft <= totalSec * 0.25) {
-      timeLeft = 1;
-      renderClock();
-      return;
-    }
-    if (deltaDeg > 0 && newTimeLeft < timeLeft && timeLeft >= totalSec * 0.75) {
-      timeLeft = totalSec;
-      renderClock();
-      return;
-    }
+    // Relatív elmozdítás: a deltaDeg arányában módosítjuk a timeLeft-et
+    const deltaSec = (deltaDeg / 360) * totalSec;
+    const newTimeLeft = Math.round(Math.max(1, Math.min(totalSec, timeLeft + deltaSec)));
+    if (newTimeLeft === timeLeft) return;
     timeLeft = newTimeLeft;
     renderClock();
   });
