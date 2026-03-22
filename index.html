@@ -96,6 +96,32 @@ html, body {
   transition: background 0.2s, color 0.2s, border-color 0.3s;
 }
 #themeBtn:active { background: var(--arc-normal); color: var(--text-inv); }
+.header-right { display: flex; gap: 8px; align-items: center; }
+#defaultBtn {
+  border-radius: 20px; font-size: 0.78rem; font-weight: 700;
+  border: 2px solid var(--save-clr); background: transparent;
+  color: var(--save-clr); padding: 5px 14px; cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+}
+#defaultBtn:active { background: var(--save-clr); color: #fff; }
+.confirm-overlay {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+}
+.confirm-box {
+  background: var(--bg); border-radius: 16px; padding: 24px;
+  max-width: 300px; width: 90%; text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+.confirm-box p { font-size: 0.95rem; font-weight: 600; margin-bottom: 20px; }
+.confirm-btns { display: flex; gap: 10px; }
+.confirm-btns button {
+  flex: 1; height: 40px; border-radius: 12px; border: none;
+  font-size: 0.88rem; font-weight: 700; cursor: pointer;
+}
+.confirm-yes { background: var(--save-clr); color: #fff; }
+.confirm-no { background: var(--dur-inactive-bg); color: var(--text); }
 .clock-area { display: flex; align-items: center; justify-content: center; flex: 1 1 0; min-height: 0; overflow: hidden; }
 #clock-wrap { touch-action: none; cursor: pointer; }
 #clock-wrap svg { display: block; }
@@ -176,7 +202,10 @@ html, body {
       <button class="swatch active" id="swatchPurple" style="background:#7c6af7;--swatch-color:#7c6af7" aria-label="Lila téma" aria-pressed="true"></button>
       <button class="swatch" id="swatchGreen" style="background:#2cc76a;--swatch-color:#2cc76a" aria-label="Zöld téma" aria-pressed="false"></button>
     </div>
-    <button id="themeBtn" aria-label="Téma váltása sötétre" aria-pressed="false">Sötét</button>
+    <div class="header-right">
+      <button id="defaultBtn" aria-label="Alapértelmezett beállítások visszaállítása">Default</button>
+      <button id="themeBtn" aria-label="Téma váltása sötétre" aria-pressed="false">Sötét</button>
+    </div>
   </div>
   <div class="clock-area">
     <div id="clock-wrap" role="timer" aria-live="polite" aria-atomic="true" aria-label="Hátralévő idő: 01:00"></div>
@@ -536,7 +565,18 @@ html, body {
 
   clockWrap.addEventListener("pointerup", (e) => {
     if (dragTimeout) { clearTimeout(dragTimeout); dragTimeout = null; }
-    if (dragActive) { dragActive = false; return; }
+    if (dragActive) {
+      dragActive = false;
+      // Az átállított idő legyen az új indulási idő
+      totalSec = timeLeft;
+      customMin = Math.floor(timeLeft / 60);
+      customSec = timeLeft % 60;
+      minDrum.scrollToValue(customMin, true);
+      secDrum.scrollToValue(customSec, true);
+      savePreset();
+      updateUI();
+      return;
+    }
     if (pointerMoved && Date.now() - pointerDownTime > 300) return;
 
     const rect = clockWrap.getBoundingClientRect();
@@ -913,6 +953,44 @@ html, body {
   // ── Swatch click handlers ──
   document.getElementById("swatchPurple").addEventListener("click", () => applyPalette("purple"));
   document.getElementById("swatchGreen").addEventListener("click", () => applyPalette("green"));
+
+  // ── Default gomb ──
+  document.getElementById("defaultBtn").addEventListener("click", () => {
+    const overlay = document.createElement("div");
+    overlay.className = "confirm-overlay";
+    overlay.innerHTML = `<div class="confirm-box">
+      <p>Visszaállítod az alapértelmezett beállításokat?</p>
+      <div class="confirm-btns">
+        <button class="confirm-yes">Igen</button>
+        <button class="confirm-no">Nem</button>
+      </div>
+    </div>`;
+    document.body.appendChild(overlay);
+    overlay.querySelector(".confirm-no").addEventListener("click", () => overlay.remove());
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    overlay.querySelector(".confirm-yes").addEventListener("click", () => {
+      overlay.remove();
+      // Törli az összes mentett beállítást
+      localStorage.removeItem("stopper_min");
+      localStorage.removeItem("stopper_sec");
+      localStorage.removeItem("stopper_presets");
+      localStorage.removeItem("stopper_theme");
+      localStorage.removeItem("stopper_palette");
+      // Visszaállítás alapértelmezettre
+      customMin = 1; customSec = 0;
+      totalSec = 60; timeLeft = 60;
+      presets = Array(10).fill(null);
+      presets[0] = { min: 1, sec: 0 };
+      presets[1] = { min: 1, sec: 30 };
+      presetCursorIdx = 0;
+      setTheme(false);
+      applyPalette("purple");
+      minDrum.scrollToValue(customMin, true);
+      secDrum.scrollToValue(customSec, true);
+      renderPresets();
+      updateUI();
+    });
+  });
 
   // ── Init ──
   if (localStorage.getItem("stopper_theme") === "dark") isDark = true;
