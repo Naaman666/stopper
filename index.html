@@ -554,7 +554,7 @@ html, body {
           dragActive = true;
           if (state === "running") stopTimer();
         }
-      }, 200);
+      }, 100);
     }
   });
 
@@ -572,17 +572,13 @@ html, body {
     if (!dragActive) { dragLastDeg = deg; return; }
     e.preventDefault();
 
-    // Csak az ív közelében fogadjuk el a mozgást
-    const dist = Math.hypot(e.clientX - cxS, e.clientY - cyS);
-    if (Math.abs(dist - r) > KNOB_R * 3) return;
-
     // Szögirány ellenőrzése (delta: + = CW, - = CCW)
     let deltaDeg = deg - dragLastDeg;
     if (deltaDeg > 180) deltaDeg -= 360;
     else if (deltaDeg < -180) deltaDeg += 360;
 
-    // Max 15° per event – nagy ugrások kiszűrése
-    deltaDeg = Math.max(-15, Math.min(15, deltaDeg));
+    // Max 30° per event – nagy ugrások kiszűrése, de ne lassítsa a követést
+    deltaDeg = Math.max(-30, Math.min(30, deltaDeg));
 
     // Tört másodperces számítás – sima ív mozgás
     const deltaSec = (deltaDeg / 360) * totalSec;
