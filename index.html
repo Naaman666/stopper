@@ -539,7 +539,7 @@ html, body {
     const kx = cxS + r * Math.cos(endRad);
     const ky = cyS + r * Math.sin(endRad);
 
-    if (Math.hypot(px - kx, py - ky) < 36 && state !== "finished") {
+    if (Math.hypot(px - kx, py - ky) < 60 && state !== "finished") {
       dragTimeout = setTimeout(() => {
         if (pointerMoved) {
           dragActive = true;
@@ -559,22 +559,19 @@ html, body {
     const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
     let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
     if (deg < 0) deg += 360;
-    timeLeft = Math.max(1, Math.min(totalSec, Math.round((deg / 360) * totalSec)));
-    renderClock();
+    const newTimeLeft = Math.max(1, Math.min(totalSec, Math.round((deg / 360) * totalSec)));
+    // Csak csökkenteni lehet (óramutató járásával ellentétesen)
+    if (newTimeLeft < timeLeft) {
+      timeLeft = newTimeLeft;
+      renderClock();
+    }
   });
 
   clockWrap.addEventListener("pointerup", (e) => {
     if (dragTimeout) { clearTimeout(dragTimeout); dragTimeout = null; }
     if (dragActive) {
       dragActive = false;
-      // Az átállított idő legyen az új indulási idő
-      totalSec = timeLeft;
-      customMin = Math.floor(timeLeft / 60);
-      customSec = timeLeft % 60;
-      minDrum.scrollToValue(customMin, true);
-      secDrum.scrollToValue(customSec, true);
-      savePreset();
-      updateUI();
+      renderClock();
       return;
     }
     if (pointerMoved && Date.now() - pointerDownTime > 300) return;
@@ -592,7 +589,7 @@ html, body {
   // ── Timer (drift-compensated via performance.now()) ──
   function startTimer() {
     if (totalSec < 1) return;
-    if (state === "idle") { timeLeft = totalSec; lastSpoken = -1; }
+    if (state === "idle") { lastSpoken = -1; }
     state = "running";
     timerStartAt = performance.now();
     timerStartLeft = timeLeft;
