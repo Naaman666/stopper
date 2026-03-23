@@ -172,7 +172,7 @@ html, body {
   border-radius: 8px; background: var(--drum-sel); pointer-events: none;
 }
 .preset-drum-fade-left, .preset-drum-fade-right {
-  position: absolute; top: 0; bottom: 0; width: 40px; pointer-events: none; z-index: 2;
+  position: absolute; top: 0; bottom: 0; width: 16px; pointer-events: none; z-index: 2;
 }
 .preset-drum-fade-left { left: 0; background: linear-gradient(to right, var(--drum-bg), transparent); }
 .preset-drum-fade-right { right: 0; background: linear-gradient(to left, var(--drum-bg), transparent); }
@@ -430,9 +430,9 @@ html, body {
       const dist = Math.abs(itemCX - center) / PRESET_ITEM_W;
       let op, sc;
       if (dist < 0.5) { op = 1; }
-      else if (dist < 1.5) { op = 0.5; }
-      else if (dist < 2.5) { op = 0.25; }
-      else { op = 0.1; }
+      else if (dist < 1.5) { op = 0.65; }
+      else if (dist < 2.5) { op = 0.4; }
+      else { op = 0.2; }
       items[i].style.opacity = op;
     }
 
