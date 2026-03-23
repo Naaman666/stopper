@@ -140,9 +140,9 @@ html, body {
 #btnStart { background: var(--btn-start-bg); }
 .preset-row { display: flex; gap: 8px; align-items: stretch; }
 .preset-save-btn {
-  flex-shrink: 0; width: 60px; height: 38px;
+  flex-shrink: 0; width: 80px; height: 38px;
   border-radius: 10px; border: none;
-  font-size: 0.75rem; font-weight: 700; cursor: pointer;
+  font-size: 0.82rem; font-weight: 700; cursor: pointer;
   background: var(--save-clr); color: #fff;
   transition: background 0.15s, opacity 0.15s;
 }
@@ -150,7 +150,7 @@ html, body {
 .preset-save-btn:active:not(:disabled) { opacity: 0.7; }
 .preset-save-btn:disabled { opacity: 0.45; cursor: default; }
 .preset-drum-wrap {
-  flex: 1; height: 38px; position: relative; overflow: hidden;
+  flex: 1; max-width: 230px; height: 38px; position: relative; overflow: hidden;
   background: var(--drum-bg); border-radius: 10px;
   touch-action: none;
   transition: opacity 0.2s;
