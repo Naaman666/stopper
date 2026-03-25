@@ -397,84 +397,61 @@ html, body {
   let presetDrumLastTime = 0;
   let presetDrumAnim = null;
   let presetDrumInited = false;
+  let pdWrap = null, pdTrack = null, pdBtn = null;
+  let pdWrapW = 0;
+  let pdLastRenderedIdx = -1;
 
-  function presetDrumCenterForIndex(idx) {
-    const wrap = document.getElementById("presetDrum");
-    if (!wrap) return 0;
-    const wrapW = wrap.clientWidth;
-    return wrapW / 2 - idx * PRESET_ITEM_W - PRESET_ITEM_W / 2;
+  function pdCenterForIndex(idx) {
+    return pdWrapW / 2 - idx * PRESET_ITEM_W - PRESET_ITEM_W / 2;
   }
 
-  function presetDrumCurrentIdx() {
-    const wrap = document.getElementById("presetDrum");
-    if (!wrap) return 0;
-    const wrapW = wrap.clientWidth;
-    const center = wrapW / 2;
-    const idx = Math.round((center - presetDrumOffset - PRESET_ITEM_W / 2) / PRESET_ITEM_W);
+  function pdCurrentIdx() {
+    const idx = Math.round((pdWrapW / 2 - presetDrumOffset - PRESET_ITEM_W / 2) / PRESET_ITEM_W);
     return Math.max(0, Math.min(P_COUNT - 1, idx));
   }
 
   function renderPresetDrum() {
-    const track = document.getElementById("presetTrack");
-    if (!track) return;
-    const items = track.children;
-    const wrap = document.getElementById("presetDrum");
-    if (!wrap) return;
-    const wrapW = wrap.clientWidth;
-    const center = wrapW / 2;
+    if (!pdTrack || !pdWrapW) return;
+    const items = pdTrack.children;
+    const center = pdWrapW / 2;
 
-    track.style.transform = `translateX(${presetDrumOffset}px)`;
+    pdTrack.style.transform = `translateX(${presetDrumOffset}px)`;
 
     for (let i = 0; i < items.length; i++) {
       const itemCX = presetDrumOffset + i * PRESET_ITEM_W + PRESET_ITEM_W / 2;
       const dist = Math.abs(itemCX - center) / PRESET_ITEM_W;
-      let op, sc;
-      if (dist < 0.5) { op = 1; }
-      else if (dist < 1.5) { op = 0.65; }
-      else if (dist < 2.5) { op = 0.4; }
-      else { op = 0.2; }
+      let op;
+      if (dist < 0.5) op = 1;
+      else if (dist < 1.5) op = 0.65;
+      else if (dist < 2.5) op = 0.4;
+      else op = 0.2;
       items[i].style.opacity = op;
     }
 
-    // Frissítjük a cursor indexet és a Save/Load gombot
-    presetCursorIdx = presetDrumCurrentIdx();
-    updateSaveLoadBtn();
-  }
-
-  function updateSaveLoadBtn() {
-    const btnSave = document.getElementById("btnSavePreset");
-    if (!btnSave) return;
-    btnSave.disabled = state === "running";
-    const p = presets[presetCursorIdx];
-    if (p && totalSec === p.min * 60 + p.sec) {
-      btnSave.textContent = "Load";
-      btnSave.classList.add("load-mode");
-    } else {
-      btnSave.textContent = "Save";
-      btnSave.classList.remove("load-mode");
+    const newIdx = pdCurrentIdx();
+    if (newIdx !== pdLastRenderedIdx) {
+      pdLastRenderedIdx = newIdx;
+      presetCursorIdx = newIdx;
+      updateSaveLoadBtn();
     }
   }
 
-  function presetDrumSnap() {
-    const idx = presetDrumCurrentIdx();
-    const target = presetDrumCenterForIndex(idx);
-    const animate = () => {
-      const delta = target - presetDrumOffset;
-      if (Math.abs(delta) < 0.5) {
-        presetDrumOffset = target;
-        renderPresetDrum();
-        return;
-      }
-      presetDrumOffset += delta * 0.28;
-      renderPresetDrum();
-      presetDrumAnim = requestAnimationFrame(animate);
-    };
-    presetDrumAnim = requestAnimationFrame(animate);
+  function updateSaveLoadBtn() {
+    if (!pdBtn) return;
+    pdBtn.disabled = state === "running";
+    const p = presets[presetCursorIdx];
+    if (p && totalSec === p.min * 60 + p.sec) {
+      pdBtn.textContent = "Load";
+      pdBtn.classList.add("load-mode");
+    } else {
+      pdBtn.textContent = "Save";
+      pdBtn.classList.remove("load-mode");
+    }
   }
 
   function presetDrumScrollTo(idx, animated) {
     if (presetDrumAnim) { cancelAnimationFrame(presetDrumAnim); presetDrumAnim = null; }
-    const target = presetDrumCenterForIndex(idx);
+    const target = pdCenterForIndex(idx);
     if (!animated) {
       presetDrumOffset = target;
       renderPresetDrum();
@@ -482,12 +459,12 @@ html, body {
     }
     const animate = () => {
       const delta = target - presetDrumOffset;
-      if (Math.abs(delta) < 0.5) {
+      if (Math.abs(delta) < SNAP_THRESH) {
         presetDrumOffset = target;
         renderPresetDrum();
         return;
       }
-      presetDrumOffset += delta * 0.28;
+      presetDrumOffset += delta * SNAP_LERP;
       renderPresetDrum();
       presetDrumAnim = requestAnimationFrame(animate);
     };
@@ -495,10 +472,8 @@ html, body {
   }
 
   function renderPresets() {
-    // Frissíti az item-ek szövegét
-    const track = document.getElementById("presetTrack");
-    if (!track) return;
-    const items = track.children;
+    if (!pdTrack) return;
+    const items = pdTrack.children;
     for (let i = 0; i < items.length; i++) {
       items[i].textContent = presetLabel(presets[i]);
     }
@@ -506,31 +481,30 @@ html, body {
   }
 
   function initPresetUI() {
-    const wrap = document.getElementById("presetDrum");
-    const track = document.getElementById("presetTrack");
-    const btnSave = document.getElementById("btnSavePreset");
-    if (!wrap || !track || !btnSave) return;
+    pdWrap = document.getElementById("presetDrum");
+    pdTrack = document.getElementById("presetTrack");
+    pdBtn = document.getElementById("btnSavePreset");
+    if (!pdWrap || !pdTrack || !pdBtn) return;
 
     if (presetDrumInited) { renderPresets(); return; }
     presetDrumInited = true;
 
-    // Itemek létrehozása
+    pdWrapW = pdWrap.clientWidth;
+
     for (let i = 0; i < P_COUNT; i++) {
       const item = document.createElement("div");
       item.className = "preset-drum-item";
       item.textContent = presetLabel(presets[i]);
-      track.appendChild(item);
+      pdTrack.appendChild(item);
     }
 
-    // Középre pozícionálás
-    presetDrumOffset = presetDrumCenterForIndex(presetCursorIdx);
+    presetDrumOffset = pdCenterForIndex(presetCursorIdx);
     renderPresetDrum();
 
-    // Pointer events – vízszintes drag
-    wrap.addEventListener("pointerdown", (e) => {
+    pdWrap.addEventListener("pointerdown", (e) => {
       if (state === "running") return;
       e.preventDefault();
-      wrap.setPointerCapture(e.pointerId);
+      pdWrap.setPointerCapture(e.pointerId);
       presetDrumDragging = true;
       presetDrumLastX = e.clientX;
       presetDrumLastTime = Date.now();
@@ -538,7 +512,7 @@ html, body {
       if (presetDrumAnim) { cancelAnimationFrame(presetDrumAnim); presetDrumAnim = null; }
     });
 
-    wrap.addEventListener("pointermove", (e) => {
+    pdWrap.addEventListener("pointermove", (e) => {
       if (!presetDrumDragging) return;
       e.preventDefault();
       const now = Date.now();
@@ -548,9 +522,8 @@ html, body {
       presetDrumLastX = e.clientX;
       presetDrumLastTime = now;
       presetDrumOffset += dx;
-      // Clamp a szélekhez
-      const minOff = presetDrumCenterForIndex(P_COUNT - 1);
-      const maxOff = presetDrumCenterForIndex(0);
+      const minOff = pdCenterForIndex(P_COUNT - 1);
+      const maxOff = pdCenterForIndex(0);
       presetDrumOffset = Math.max(minOff - PRESET_ITEM_W, Math.min(maxOff + PRESET_ITEM_W, presetDrumOffset));
       renderPresetDrum();
     });
@@ -558,13 +531,12 @@ html, body {
     const onUp = () => {
       if (!presetDrumDragging) return;
       presetDrumDragging = false;
-      // Inertia
       let vel = presetDrumVel * 80;
-      const minOff = presetDrumCenterForIndex(P_COUNT - 1);
-      const maxOff = presetDrumCenterForIndex(0);
+      const minOff = pdCenterForIndex(P_COUNT - 1);
+      const maxOff = pdCenterForIndex(0);
       const step = () => {
-        vel *= 0.88;
-        if (Math.abs(vel) < 0.4) { presetDrumSnap(); return; }
+        vel *= FRICTION;
+        if (Math.abs(vel) < MIN_VEL) { presetDrumScrollTo(pdCurrentIdx(), true); return; }
         presetDrumOffset += vel;
         presetDrumOffset = Math.max(minOff - PRESET_ITEM_W / 2, Math.min(maxOff + PRESET_ITEM_W / 2, presetDrumOffset));
         renderPresetDrum();
@@ -572,28 +544,30 @@ html, body {
       };
       presetDrumAnim = requestAnimationFrame(step);
     };
-    wrap.addEventListener("pointerup", onUp);
-    wrap.addEventListener("pointercancel", onUp);
+    pdWrap.addEventListener("pointerup", onUp);
+    pdWrap.addEventListener("pointercancel", onUp);
 
-    // Save/Load gomb
-    btnSave.addEventListener("click", () => {
+    pdBtn.addEventListener("click", () => {
       const p = presets[presetCursorIdx];
       if (p && totalSec === p.min * 60 + p.sec) {
-        // Load mód: betöltjük a preset értékét
         setDuration(p.min * 60 + p.sec);
       } else {
-        // Save mód: mentjük az aktuális értéket
         presets[presetCursorIdx] = { min: customMin, sec: customSec };
         savePresets();
       }
       renderPresets();
     });
 
-    // Resize observer a wrap-re
+    let pdResizeRaf = null;
     new ResizeObserver(() => {
-      presetDrumOffset = presetDrumCenterForIndex(presetCursorIdx);
-      renderPresetDrum();
-    }).observe(wrap);
+      if (pdResizeRaf) return;
+      pdResizeRaf = requestAnimationFrame(() => {
+        pdResizeRaf = null;
+        pdWrapW = pdWrap.clientWidth;
+        presetDrumOffset = pdCenterForIndex(presetCursorIdx);
+        renderPresetDrum();
+      });
+    }).observe(pdWrap);
   }
 
   // ── Theme ──
@@ -909,8 +883,7 @@ html, body {
     }
     renderPresets();
 
-    const presetWrap = document.getElementById("presetDrum");
-    if (presetWrap) presetWrap.classList.toggle("locked", state === "running");
+    if (pdWrap) pdWrap.classList.toggle("locked", state === "running");
 
     const drumLocked = state === "running";
     drumMinEl.classList.toggle("locked", drumLocked);
