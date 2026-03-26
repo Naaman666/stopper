@@ -607,8 +607,30 @@ html, body {
     return Math.max(80, Math.min(vp.width - 32, vp.height - 220));
   }
 
+  // Cached DOM elements for clock to optimize rendering
+  let clockSvgEl, clockTrackEl, clockArcPathEl, clockArcCircleEl, clockKnobEl, clockTextEl;
+
+  function initClockDOM() {
+    clockWrap.innerHTML = `<svg id="clock-svg" aria-hidden="true">
+      <circle id="clock-track" fill="none" />
+      <path id="clock-arc-path" fill="none" stroke-linecap="round" style="display:none;" />
+      <circle id="clock-arc-circle" fill="none" style="display:none;" />
+      <circle id="clock-knob" style="display:none;" />
+      <text id="clock-text" text-anchor="middle" dominant-baseline="central" font-weight="800"></text>
+    </svg>`;
+
+    clockSvgEl = document.getElementById("clock-svg");
+    clockTrackEl = document.getElementById("clock-track");
+    clockArcPathEl = document.getElementById("clock-arc-path");
+    clockArcCircleEl = document.getElementById("clock-arc-circle");
+    clockKnobEl = document.getElementById("clock-knob");
+    clockTextEl = document.getElementById("clock-text");
+  }
+
   function renderClock() {
     if (!clockWrap) return;
+    if (!clockSvgEl) initClockDOM();
+
     const sz = getClockSize();
     const r = sz / 2 - STROKE_W - KNOB_R - 2;
     const cx = sz / 2, cy = sz / 2;
@@ -618,8 +640,17 @@ html, body {
     const trackColor = ccTrack;
     const frac = totalSec > 0 ? displayTime / totalSec : 0;
 
-    let arcSvg = "";
-    let knobSvg = "";
+    // Update SVG container
+    clockSvgEl.setAttribute("width", sz);
+    clockSvgEl.setAttribute("height", sz);
+    clockSvgEl.setAttribute("viewBox", `0 0 ${sz} ${sz}`);
+
+    // Update track
+    clockTrackEl.setAttribute("cx", cx);
+    clockTrackEl.setAttribute("cy", cy);
+    clockTrackEl.setAttribute("r", r);
+    clockTrackEl.setAttribute("stroke", trackColor);
+    clockTrackEl.setAttribute("stroke-width", STROKE_W);
 
     if (frac > 0 && frac < 1) {
       const angle = frac * 360;
@@ -630,33 +661,60 @@ html, body {
       const kx = cx + r * Math.cos(endRad);
       const ky = cy + r * Math.sin(endRad);
       const largeArc = angle > 180 ? 1 : 0;
-      arcSvg = `<path d="M${sx},${sy} A${r},${r} 0 ${largeArc} 1 ${kx},${ky}" fill="none" stroke="${arcColor}" stroke-width="${STROKE_W}" stroke-linecap="round"/>`;
-      knobSvg = `<circle cx="${kx}" cy="${ky}" r="${KNOB_R}" fill="${arcColor}"/>`;
+
+      clockArcPathEl.setAttribute("d", `M${sx},${sy} A${r},${r} 0 ${largeArc} 1 ${kx},${ky}`);
+      clockArcPathEl.setAttribute("stroke", arcColor);
+      clockArcPathEl.setAttribute("stroke-width", STROKE_W);
+      clockArcPathEl.style.display = "";
+
+      clockArcCircleEl.style.display = "none";
+
+      clockKnobEl.setAttribute("cx", kx);
+      clockKnobEl.setAttribute("cy", ky);
+      clockKnobEl.setAttribute("r", KNOB_R);
+      clockKnobEl.setAttribute("fill", arcColor);
+      clockKnobEl.style.display = "";
     } else if (frac >= 1) {
-      arcSvg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${arcColor}" stroke-width="${STROKE_W}"/>`;
-      knobSvg = `<circle cx="${cx}" cy="${cy - r}" r="${KNOB_R}" fill="${arcColor}"/>`;
+      clockArcCircleEl.setAttribute("cx", cx);
+      clockArcCircleEl.setAttribute("cy", cy);
+      clockArcCircleEl.setAttribute("r", r);
+      clockArcCircleEl.setAttribute("stroke", arcColor);
+      clockArcCircleEl.setAttribute("stroke-width", STROKE_W);
+      clockArcCircleEl.style.display = "";
+
+      clockArcPathEl.style.display = "none";
+
+      clockKnobEl.setAttribute("cx", cx);
+      clockKnobEl.setAttribute("cy", cy - r);
+      clockKnobEl.setAttribute("r", KNOB_R);
+      clockKnobEl.setAttribute("fill", arcColor);
+      clockKnobEl.style.display = "";
+    } else {
+      clockArcPathEl.style.display = "none";
+      clockArcCircleEl.style.display = "none";
+      clockKnobEl.style.display = "none";
     }
 
     const digitSize = Math.max(14, sz * 0.21);
-    let digitText;
+    clockTextEl.setAttribute("x", cx);
+    clockTextEl.setAttribute("y", cy);
+    clockTextEl.setAttribute("fill", arcColor);
+
     if (state === "finished") {
-      digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${r * 0.38}" font-weight="800" fill="${arcColor}">GO GO GO</text>`;
+      clockTextEl.setAttribute("font-size", r * 0.38);
+      clockTextEl.textContent = "GO GO GO";
     } else {
       const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
       const ss = String(timeLeft % 60).padStart(2, "0");
-      digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${digitSize}" font-weight="800" fill="${arcColor}">${mm}:${ss}</text>`;
+      clockTextEl.setAttribute("font-size", digitSize);
+      clockTextEl.textContent = `${mm}:${ss}`;
     }
 
-    clockWrap.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true">
-      <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${trackColor}" stroke-width="${STROKE_W}"/>
-      ${arcSvg}${knobSvg}${digitText}
-    </svg>`;
-
     // Update ARIA label for screen readers
-    const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-    const ss = String(timeLeft % 60).padStart(2, "0");
+    const mmLabel = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+    const ssLabel = String(timeLeft % 60).padStart(2, "0");
     clockWrap.setAttribute("aria-label",
-      state === "finished" ? "Idő lejárt!" : `Hátralévő idő: ${mm}:${ss}`);
+      state === "finished" ? "Idő lejárt!" : `Hátralévő idő: ${mmLabel}:${ssLabel}`);
   }
 
   // ── Pointer on clock ──
