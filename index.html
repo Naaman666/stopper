@@ -1,1223 +1,1748 @@
-<!DOCTYPE html>
+<!doctype html>
 
 <html lang="hu">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<meta name="theme-color" content="#7c6af7">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<title>Stopper</title>
-<link rel="manifest" href="manifest.json">
-<style>
-/* Stopper – Inline CSS */
-:root {
-  --bg: #f2f2f7;
-  --arc-track: #1c1c2e;
-  --arc-normal: #7c6af7;
-  --arc-alert: #ff3b30;
-  --btn-stop-bg: #1c1c2e;
-  --btn-start-bg: #7c6af7;
-  --dur-active-bg: #7c6af7;
-  --dur-inactive-bg: #e2e0f8;
-  --dur-cursor-bg: #d0ccf8;
-  --drum-bg: #e2e0f8;
-  --drum-sel: rgba(124,106,247,0.2);
-  --drum-item: #3d33a8;
-  --drum-dim: rgba(61,51,168,0.22);
-  --drum-label: #7c6af7;
-  --text: #1c1c2e;
-  --text-inv: #fff;
-  --save-clr: #7d2446;
-  --save-clr-light: #f3dce6;
-}
-[data-theme="dark"] {
-  --bg: #1a1a24;
-  --arc-track: #2e2c44;
-  --arc-normal: #6857e8;
-  --arc-alert: #cc2f26;
-  --btn-stop-bg: #2e2c44;
-  --btn-start-bg: #5a4fcf;
-  --dur-active-bg: #5a4fcf;
-  --dur-inactive-bg: #252336;
-  --dur-cursor-bg: #302b4a;
-  --drum-bg: #252336;
-  --drum-sel: rgba(104,87,232,0.3);
-  --drum-item: #e8e6ff;
-  --drum-dim: rgba(232,230,255,0.18);
-  --drum-label: #8b7ff0;
-  --text: #e8e6ff;
-  --text-inv: #fff;
-  --save-clr: #c4547a;
-  --save-clr-light: #3a1527;
-}
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body {
-  height: 100%; width: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  overflow: hidden;
-  touch-action: manipulation;
-  -webkit-user-select: none; user-select: none;
-  transition: background 0.3s;
-}
-#app {
-  display: flex;
-  flex-direction: column;
-  max-width: 480px;
-  margin: 0 auto;
-  height: 100%;
-  overflow: hidden;
-  padding: max(10px, env(safe-area-inset-top)) 20px 0;
-}
-.header { display: flex; justify-content: space-between; align-items: center; padding: 4px 0; flex-shrink: 0; }
-.swatch-row { display: flex; gap: 8px; align-items: center; }
-.swatch {
-  width: 26px; height: 26px; border-radius: 8px; border: none; cursor: pointer;
-  position: relative; transition: transform 0.15s, box-shadow 0.15s;
-  flex-shrink: 0;
-}
-.swatch:active { transform: scale(0.88); }
-.swatch.active {
-  box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--swatch-color);
-}
-.swatch::after {
-  content: ""; display: none; position: absolute;
-  left: 50%; top: 50%; transform: translate(-50%, -54%) rotate(45deg);
-  width: 5px; height: 9px;
-  border-right: 2.5px solid #fff; border-bottom: 2.5px solid #fff;
-}
-.swatch.active::after { display: block; }
-#themeBtn {
-  border-radius: 20px; font-size: 0.78rem; font-weight: 700;
-  border: 2px solid var(--arc-normal); background: transparent;
-  color: var(--arc-normal); padding: 5px 14px; cursor: pointer;
-  transition: background 0.2s, color 0.2s, border-color 0.3s;
-}
-#themeBtn:active { background: var(--arc-normal); color: var(--text-inv); }
-.header-right { display: flex; gap: 8px; align-items: center; }
-#defaultBtn {
-  border-radius: 20px; font-size: 0.78rem; font-weight: 700;
-  border: 2px solid var(--save-clr); background: transparent;
-  color: var(--save-clr); padding: 5px 14px; cursor: pointer;
-  transition: background 0.2s, color 0.2s;
-}
-#defaultBtn:active { background: var(--save-clr); color: #fff; }
-.confirm-overlay {
-  position: fixed; inset: 0; z-index: 100;
-  background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center;
-  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
-}
-.confirm-box {
-  background: var(--bg); border-radius: 16px; padding: 24px;
-  max-width: 300px; width: 90%; text-align: center;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-}
-.confirm-box p { font-size: 0.95rem; font-weight: 600; margin-bottom: 20px; }
-.confirm-btns { display: flex; gap: 10px; }
-.confirm-btns button {
-  flex: 1; height: 40px; border-radius: 12px; border: none;
-  font-size: 0.88rem; font-weight: 700; cursor: pointer;
-}
-.confirm-yes { background: var(--save-clr); color: #fff; }
-.confirm-no { background: var(--dur-inactive-bg); color: var(--text); }
-.clock-area { display: flex; align-items: center; justify-content: center; flex: 1 1 0; min-height: 0; overflow: hidden; }
-#clock-wrap { touch-action: none; cursor: pointer; }
-#clock-wrap svg { display: block; }
-.controls { display: flex; flex-direction: column; gap: 16px; flex-shrink: 0; padding-bottom: max(20px, env(safe-area-inset-bottom)); overflow-y: auto; }
-.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.btn {
-  height: 46px; border-radius: 14px; border: none;
-  font-size: 1rem; font-weight: 700; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  transition: opacity 0.15s, transform 0.1s;
-  color: var(--text-inv);
-}
-.btn:active:not(:disabled) { transform: scale(0.96); }
-.btn:disabled { opacity: 0.45; cursor: default; }
-#btnStop { background: var(--btn-stop-bg); }
-#btnStart { background: var(--btn-start-bg); }
-.preset-row { display: flex; gap: 8px; align-items: stretch; }
-.preset-save-btn {
-  flex-shrink: 0; width: 100px; height: 38px;
-  border-radius: 10px; border: none;
-  font-size: 0.88rem; font-weight: 700; cursor: pointer;
-  background: var(--save-clr); color: #fff;
-  transition: background 0.15s, opacity 0.15s;
-}
-.preset-save-btn.load-mode { background: var(--arc-normal); }
-.preset-save-btn:active:not(:disabled) { opacity: 0.7; }
-.preset-save-btn:disabled { opacity: 0.45; cursor: default; }
-.preset-drum-wrap {
-  flex: 1; height: 38px; position: relative; overflow: hidden;
-  background: var(--drum-bg); border-radius: 10px;
-  touch-action: none;
-  transition: opacity 0.2s;
-}
-.preset-drum-wrap.locked { opacity: 0.32; pointer-events: none; }
-.preset-drum-track {
-  position: absolute; top: 0; bottom: 0; display: flex; align-items: center;
-  will-change: transform;
-}
-.preset-drum-item {
-  width: 72px; height: 38px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 0.82rem; font-weight: 700; color: var(--drum-item);
-  will-change: transform, opacity;
-}
-.preset-drum-sel {
-  position: absolute; top: 3px; bottom: 3px; width: 72px;
-  left: 50%; transform: translateX(-50%);
-  border-radius: 8px; background: var(--drum-sel); pointer-events: none;
-}
-.preset-drum-fade-left, .preset-drum-fade-right {
-  position: absolute; top: 0; bottom: 0; width: 16px; pointer-events: none; z-index: 2;
-}
-.preset-drum-fade-left { left: 0; background: linear-gradient(to right, var(--drum-bg), transparent); }
-.preset-drum-fade-right { right: 0; background: linear-gradient(to left, var(--drum-bg), transparent); }
-.drums-row {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
-  margin-top: 2px;
-}
-.drum-col { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.drum-label { font-size: 0.72rem; font-weight: 700; color: var(--drum-label); text-transform: uppercase; letter-spacing: 0.04em; }
-.drum-container {
-  width: 100%; height: 130px; position: relative; overflow: hidden;
-  background: var(--drum-bg); border-radius: 14px;
-  touch-action: none;
-  transition: opacity 0.2s;
-}
-.drum-container.locked { opacity: 0.32; pointer-events: none; }
-.drum-track { position: absolute; left: 0; right: 0; will-change: transform; }
-.drum-item {
-  height: 50px; display: flex; align-items: center; justify-content: center;
-  font-size: 1.3rem; font-weight: 700; color: var(--drum-item);
-  will-change: transform, opacity;
-}
-.drum-sel {
-  position: absolute; left: 10px; right: 10px; height: 50px; top: 50px;
-  border-radius: 10px; background: var(--drum-sel); pointer-events: none;
-}
-.drum-fade-top, .drum-fade-bottom {
-  position: absolute; left: 0; right: 0; height: 60px; pointer-events: none; z-index: 2;
-}
-.drum-fade-top { top: 0; background: linear-gradient(to bottom, var(--drum-bg), transparent); }
-.drum-fade-bottom { bottom: 0; background: linear-gradient(to top, var(--drum-bg), transparent); }
-</style>
-</head>
-<body>
-<div id="app">
-  <div class="header">
-    <div class="swatch-row" aria-label="Szín téma">
-      <button class="swatch active" id="swatch-purple" style="background:#7c6af7;--swatch-color:#7c6af7" aria-label="Lila téma" aria-pressed="true"></button>
-      <button class="swatch" id="swatch-green" style="background:#2cc76a;--swatch-color:#2cc76a" aria-label="Zöld téma" aria-pressed="false"></button>
-    </div>
-    <div class="header-right">
-      <button id="default-btn" aria-label="Alapértelmezett beállítások visszaállítása">Default</button>
-      <button id="theme-btn" aria-label="Téma váltása sötétre" aria-pressed="false">Sötét</button>
-    </div>
-  </div>
-  <div class="clock-area">
-    <div id="clock-wrap" role="timer" aria-live="polite" aria-atomic="true" aria-label="Hátralévő idő: 01:00"></div>
-  </div>
-  <div class="controls">
-    <div class="btn-row">
-      <button class="btn" id="btn-stop" aria-label="Stop">⏹ Stop</button>
-      <button class="btn" id="btn-start" aria-label="Indítás">▶ Indít</button>
-    </div>
-    <div class="preset-row">
-      <button class="preset-save-btn" id="btn-save-preset" aria-label="Mentés az aktív helyre">Save</button>
-      <div class="preset-drum-wrap" id="preset-drum" role="listbox" aria-label="Előbeállított idők">
-        <div class="preset-drum-sel"></div>
-        <div class="preset-drum-track" id="preset-track"></div>
-        <div class="preset-drum-fade-left"></div>
-        <div class="preset-drum-fade-right"></div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#7c6af7" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:;"
+    />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <title>Stopper</title>
+    <link rel="manifest" href="manifest.json" />
+    <style>
+      /* Stopper – Inline CSS */
+      :root {
+        --bg: #f2f2f7;
+        --arc-track: #1c1c2e;
+        --arc-normal: #7c6af7;
+        --arc-alert: #ff3b30;
+        --btn-stop-bg: #1c1c2e;
+        --btn-start-bg: #7c6af7;
+        --dur-active-bg: #7c6af7;
+        --dur-inactive-bg: #e2e0f8;
+        --dur-cursor-bg: #d0ccf8;
+        --drum-bg: #e2e0f8;
+        --drum-sel: rgba(124, 106, 247, 0.2);
+        --drum-item: #3d33a8;
+        --drum-dim: rgba(61, 51, 168, 0.22);
+        --drum-label: #7c6af7;
+        --text: #1c1c2e;
+        --text-inv: #fff;
+        --save-clr: #7d2446;
+        --save-clr-light: #f3dce6;
+      }
+      [data-theme="dark"] {
+        --bg: #1a1a24;
+        --arc-track: #2e2c44;
+        --arc-normal: #6857e8;
+        --arc-alert: #cc2f26;
+        --btn-stop-bg: #2e2c44;
+        --btn-start-bg: #5a4fcf;
+        --dur-active-bg: #5a4fcf;
+        --dur-inactive-bg: #252336;
+        --dur-cursor-bg: #302b4a;
+        --drum-bg: #252336;
+        --drum-sel: rgba(104, 87, 232, 0.3);
+        --drum-item: #e8e6ff;
+        --drum-dim: rgba(232, 230, 255, 0.18);
+        --drum-label: #8b7ff0;
+        --text: #e8e6ff;
+        --text-inv: #fff;
+        --save-clr: #c4547a;
+        --save-clr-light: #3a1527;
+      }
+      *,
+      *::before,
+      *::after {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      html,
+      body {
+        height: 100%;
+        width: 100%;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
+          sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        overflow: hidden;
+        touch-action: manipulation;
+        -webkit-user-select: none;
+        user-select: none;
+        transition: background 0.3s;
+      }
+      #app {
+        display: flex;
+        flex-direction: column;
+        max-width: 480px;
+        margin: 0 auto;
+        height: 100%;
+        overflow: hidden;
+        padding: max(10px, env(safe-area-inset-top)) 20px 0;
+      }
+      .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 4px 0;
+        flex-shrink: 0;
+      }
+      .swatch-row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      .swatch {
+        width: 26px;
+        height: 26px;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        position: relative;
+        transition:
+          transform 0.15s,
+          box-shadow 0.15s;
+        flex-shrink: 0;
+      }
+      .swatch:active {
+        transform: scale(0.88);
+      }
+      .swatch.active {
+        box-shadow:
+          0 0 0 2px var(--bg),
+          0 0 0 4px var(--swatch-color);
+      }
+      .swatch::after {
+        content: "";
+        display: none;
+        position: absolute;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -54%) rotate(45deg);
+        width: 5px;
+        height: 9px;
+        border-right: 2.5px solid #fff;
+        border-bottom: 2.5px solid #fff;
+      }
+      .swatch.active::after {
+        display: block;
+      }
+      #themeBtn {
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 2px solid var(--arc-normal);
+        background: transparent;
+        color: var(--arc-normal);
+        padding: 5px 14px;
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          color 0.2s,
+          border-color 0.3s;
+      }
+      #themeBtn:active {
+        background: var(--arc-normal);
+        color: var(--text-inv);
+      }
+      .header-right {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+      #defaultBtn {
+        border-radius: 20px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        border: 2px solid var(--save-clr);
+        background: transparent;
+        color: var(--save-clr);
+        padding: 5px 14px;
+        cursor: pointer;
+        transition:
+          background 0.2s,
+          color 0.2s;
+      }
+      #defaultBtn:active {
+        background: var(--save-clr);
+        color: #fff;
+      }
+      .confirm-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 100;
+        background: rgba(0, 0, 0, 0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        -webkit-backdrop-filter: blur(4px);
+        backdrop-filter: blur(4px);
+      }
+      .confirm-box {
+        background: var(--bg);
+        border-radius: 16px;
+        padding: 24px;
+        max-width: 300px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+      .confirm-box p {
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 20px;
+      }
+      .confirm-btns {
+        display: flex;
+        gap: 10px;
+      }
+      .confirm-btns button {
+        flex: 1;
+        height: 40px;
+        border-radius: 12px;
+        border: none;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+      }
+      .confirm-yes {
+        background: var(--save-clr);
+        color: #fff;
+      }
+      .confirm-no {
+        background: var(--dur-inactive-bg);
+        color: var(--text);
+      }
+      .clock-area {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 1 1 0;
+        min-height: 0;
+        overflow: hidden;
+      }
+      #clock-wrap {
+        touch-action: none;
+        cursor: pointer;
+      }
+      #clock-wrap svg {
+        display: block;
+      }
+      .controls {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+        flex-shrink: 0;
+        padding-bottom: max(20px, env(safe-area-inset-bottom));
+        overflow-y: auto;
+      }
+      .btn-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .btn {
+        height: 46px;
+        border-radius: 14px;
+        border: none;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        transition:
+          opacity 0.15s,
+          transform 0.1s;
+        color: var(--text-inv);
+      }
+      .btn:active:not(:disabled) {
+        transform: scale(0.96);
+      }
+      .btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      #btnStop {
+        background: var(--btn-stop-bg);
+      }
+      #btnStart {
+        background: var(--btn-start-bg);
+      }
+      .preset-row {
+        display: flex;
+        gap: 8px;
+        align-items: stretch;
+      }
+      .preset-save-btn {
+        flex-shrink: 0;
+        width: 100px;
+        height: 38px;
+        border-radius: 10px;
+        border: none;
+        font-size: 0.88rem;
+        font-weight: 700;
+        cursor: pointer;
+        background: var(--save-clr);
+        color: #fff;
+        transition:
+          background 0.15s,
+          opacity 0.15s;
+      }
+      .preset-save-btn.load-mode {
+        background: var(--arc-normal);
+      }
+      .preset-save-btn:active:not(:disabled) {
+        opacity: 0.7;
+      }
+      .preset-save-btn:disabled {
+        opacity: 0.45;
+        cursor: default;
+      }
+      .preset-drum-wrap {
+        flex: 1;
+        height: 38px;
+        position: relative;
+        overflow: hidden;
+        background: var(--drum-bg);
+        border-radius: 10px;
+        touch-action: none;
+        transition: opacity 0.2s;
+      }
+      .preset-drum-wrap.locked {
+        opacity: 0.32;
+        pointer-events: none;
+      }
+      .preset-drum-track {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        will-change: transform;
+      }
+      .preset-drum-item {
+        width: 72px;
+        height: 38px;
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.82rem;
+        font-weight: 700;
+        color: var(--drum-item);
+        will-change: transform, opacity;
+      }
+      .preset-drum-sel {
+        position: absolute;
+        top: 3px;
+        bottom: 3px;
+        width: 72px;
+        left: 50%;
+        transform: translateX(-50%);
+        border-radius: 8px;
+        background: var(--drum-sel);
+        pointer-events: none;
+      }
+      .preset-drum-fade-left,
+      .preset-drum-fade-right {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        width: 16px;
+        pointer-events: none;
+        z-index: 2;
+      }
+      .preset-drum-fade-left {
+        left: 0;
+        background: linear-gradient(to right, var(--drum-bg), transparent);
+      }
+      .preset-drum-fade-right {
+        right: 0;
+        background: linear-gradient(to left, var(--drum-bg), transparent);
+      }
+      .drums-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-top: 2px;
+      }
+      .drum-col {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+      }
+      .drum-label {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: var(--drum-label);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+      }
+      .drum-container {
+        width: 100%;
+        height: 130px;
+        position: relative;
+        overflow: hidden;
+        background: var(--drum-bg);
+        border-radius: 14px;
+        touch-action: none;
+        transition: opacity 0.2s;
+      }
+      .drum-container.locked {
+        opacity: 0.32;
+        pointer-events: none;
+      }
+      .drum-track {
+        position: absolute;
+        left: 0;
+        right: 0;
+        will-change: transform;
+      }
+      .drum-item {
+        height: 50px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.3rem;
+        font-weight: 700;
+        color: var(--drum-item);
+        will-change: transform, opacity;
+      }
+      .drum-sel {
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        height: 50px;
+        top: 50px;
+        border-radius: 10px;
+        background: var(--drum-sel);
+        pointer-events: none;
+      }
+      .drum-fade-top,
+      .drum-fade-bottom {
+        position: absolute;
+        left: 0;
+        right: 0;
+        height: 60px;
+        pointer-events: none;
+        z-index: 2;
+      }
+      .drum-fade-top {
+        top: 0;
+        background: linear-gradient(to bottom, var(--drum-bg), transparent);
+      }
+      .drum-fade-bottom {
+        bottom: 0;
+        background: linear-gradient(to top, var(--drum-bg), transparent);
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div class="header">
+        <div class="swatch-row" aria-label="Szín téma">
+          <button
+            class="swatch active"
+            id="swatch-purple"
+            style="background: #7c6af7; --swatch-color: #7c6af7"
+            aria-label="Lila téma"
+            aria-pressed="true"
+          ></button>
+          <button
+            class="swatch"
+            id="swatch-green"
+            style="background: #2cc76a; --swatch-color: #2cc76a"
+            aria-label="Zöld téma"
+            aria-pressed="false"
+          ></button>
+        </div>
+        <div class="header-right">
+          <button
+            id="default-btn"
+            aria-label="Alapértelmezett beállítások visszaállítása"
+          >
+            Default
+          </button>
+          <button
+            id="theme-btn"
+            aria-label="Téma váltása sötétre"
+            aria-pressed="false"
+          >
+            Sötét
+          </button>
+        </div>
+      </div>
+      <div class="clock-area">
+        <div
+          id="clock-wrap"
+          role="timer"
+          aria-live="polite"
+          aria-atomic="true"
+          aria-label="Hátralévő idő: 01:00"
+        ></div>
+      </div>
+      <div class="controls">
+        <div class="btn-row">
+          <button class="btn" id="btn-stop" aria-label="Stop">⏹ Stop</button>
+          <button class="btn" id="btn-start" aria-label="Indítás">
+            ▶ Indít
+          </button>
+        </div>
+        <div class="preset-row">
+          <button
+            class="preset-save-btn"
+            id="btn-save-preset"
+            aria-label="Mentés az aktív helyre"
+          >
+            Save
+          </button>
+          <div
+            class="preset-drum-wrap"
+            id="preset-drum"
+            role="listbox"
+            aria-label="Előbeállított idők"
+          >
+            <div class="preset-drum-sel"></div>
+            <div class="preset-drum-track" id="preset-track"></div>
+            <div class="preset-drum-fade-left"></div>
+            <div class="preset-drum-fade-right"></div>
+          </div>
+        </div>
+        <div class="drums-row">
+          <div class="drum-col">
+            <span class="drum-label">Perc</span>
+            <div
+              class="drum-container"
+              id="drum-min"
+              role="spinbutton"
+              aria-label="Percek"
+              aria-valuemin="0"
+              aria-valuemax="60"
+              aria-valuenow="1"
+            ></div>
+          </div>
+          <div class="drum-col">
+            <span class="drum-label">Mp</span>
+            <div
+              class="drum-container"
+              id="drum-sec"
+              role="spinbutton"
+              aria-label="Másodpercek"
+              aria-valuemin="0"
+              aria-valuemax="59"
+              aria-valuenow="0"
+            ></div>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="drums-row">
-      <div class="drum-col">
-        <span class="drum-label">Perc</span>
-        <div class="drum-container" id="drum-min" role="spinbutton" aria-label="Percek" aria-valuemin="0" aria-valuemax="60" aria-valuenow="1"></div>
-      </div>
-      <div class="drum-col">
-        <span class="drum-label">Mp</span>
-        <div class="drum-container" id="drum-sec" role="spinbutton" aria-label="Másodpercek" aria-valuemin="0" aria-valuemax="59" aria-valuenow="0"></div>
-      </div>
-    </div>
-  </div>
-</div>
 
-<script>
-/* Stopper – Inline JS */
-(() => {
-  "use strict";
+    <script>
+      /* Stopper – Inline JS */
+      (() => {
+        "use strict";
 
-  let state = "idle";
-  let totalSec = 60;
-  let timeLeft = 60;
-  let customMin = 1;
-  let customSec = 0;
-  let lastSpoken = -1;
-  let tickTimer = null;
-  let finishTimer = null;
-  let ttsUnlocked = false;
-  let preferredVoice = null;
-  let isDark = false;
-  let currentPalette = "purple";
-  let ccNormal = "#7c6af7", ccTrack = "#1c1c2e", ccAlert = "#ff3b30";
+        let state = "idle";
+        let totalSec = 60;
+        let timeLeft = 60;
+        let customMin = 1;
+        let customSec = 0;
+        let lastSpoken = -1;
+        let tickTimer = null;
+        let finishTimer = null;
+        let ttsUnlocked = false;
+        let preferredVoice = null;
+        let isDark = false;
+        let currentPalette = "purple";
+        let ccNormal = "#7c6af7",
+          ccTrack = "#1c1c2e",
+          ccAlert = "#ff3b30";
 
-  const PALETTES = {
-    purple: {
-      light: {
-        "--arc-normal": "#7c6af7", "--btn-start-bg": "#7c6af7",
-        "--dur-active-bg": "#7c6af7", "--dur-inactive-bg": "#e2e0f8", "--dur-cursor-bg": "#d0ccf8",
-        "--drum-sel": "rgba(124,106,247,0.2)", "--drum-item": "#3d33a8",
-        "--drum-dim": "rgba(61,51,168,0.22)", "--drum-label": "#7c6af7",
-      },
-      dark: {
-        "--arc-normal": "#6857e8", "--btn-start-bg": "#5a4fcf",
-        "--dur-active-bg": "#5a4fcf", "--dur-inactive-bg": "#252336", "--dur-cursor-bg": "#302b4a",
-        "--drum-sel": "rgba(104,87,232,0.3)", "--drum-item": "#e8e6ff",
-        "--drum-dim": "rgba(232,230,255,0.18)", "--drum-label": "#8b7ff0",
-      }
-    },
-    green: {
-      light: {
-        "--arc-normal": "#2cc76a", "--btn-start-bg": "#2cc76a",
-        "--dur-active-bg": "#2cc76a", "--dur-inactive-bg": "#ccf2da", "--dur-cursor-bg": "#b0eac4",
-        "--drum-sel": "rgba(44,199,106,0.2)", "--drum-item": "#166b38",
-        "--drum-dim": "rgba(22,107,56,0.22)", "--drum-label": "#2cc76a",
-      },
-      dark: {
-        "--arc-normal": "#25a858", "--btn-start-bg": "#1e8f4a",
-        "--dur-active-bg": "#1e8f4a", "--dur-inactive-bg": "#162a1e", "--dur-cursor-bg": "#1a3526",
-        "--drum-sel": "rgba(44,199,106,0.3)", "--drum-item": "#b2f5ce",
-        "--drum-dim": "rgba(178,245,206,0.18)", "--drum-label": "#3dd475",
-      }
-    }
-  };
+        const PALETTES = {
+          purple: {
+            light: {
+              "--arc-normal": "#7c6af7",
+              "--btn-start-bg": "#7c6af7",
+              "--dur-active-bg": "#7c6af7",
+              "--dur-inactive-bg": "#e2e0f8",
+              "--dur-cursor-bg": "#d0ccf8",
+              "--drum-sel": "rgba(124,106,247,0.2)",
+              "--drum-item": "#3d33a8",
+              "--drum-dim": "rgba(61,51,168,0.22)",
+              "--drum-label": "#7c6af7",
+            },
+            dark: {
+              "--arc-normal": "#6857e8",
+              "--btn-start-bg": "#5a4fcf",
+              "--dur-active-bg": "#5a4fcf",
+              "--dur-inactive-bg": "#252336",
+              "--dur-cursor-bg": "#302b4a",
+              "--drum-sel": "rgba(104,87,232,0.3)",
+              "--drum-item": "#e8e6ff",
+              "--drum-dim": "rgba(232,230,255,0.18)",
+              "--drum-label": "#8b7ff0",
+            },
+          },
+          green: {
+            light: {
+              "--arc-normal": "#2cc76a",
+              "--btn-start-bg": "#2cc76a",
+              "--dur-active-bg": "#2cc76a",
+              "--dur-inactive-bg": "#ccf2da",
+              "--dur-cursor-bg": "#b0eac4",
+              "--drum-sel": "rgba(44,199,106,0.2)",
+              "--drum-item": "#166b38",
+              "--drum-dim": "rgba(22,107,56,0.22)",
+              "--drum-label": "#2cc76a",
+            },
+            dark: {
+              "--arc-normal": "#25a858",
+              "--btn-start-bg": "#1e8f4a",
+              "--dur-active-bg": "#1e8f4a",
+              "--dur-inactive-bg": "#162a1e",
+              "--dur-cursor-bg": "#1a3526",
+              "--drum-sel": "rgba(44,199,106,0.3)",
+              "--drum-item": "#b2f5ce",
+              "--drum-dim": "rgba(178,245,206,0.18)",
+              "--drum-label": "#3dd475",
+            },
+          },
+        };
 
-  function applyPalette(name) {
-    currentPalette = name;
-    const vars = PALETTES[name][isDark ? "dark" : "light"];
-    const root = document.documentElement;
-    for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
-    ccNormal = vars["--arc-normal"];
-    // Update theme-color meta
-    if (themeColorMeta) themeColorMeta.setAttribute("content", PALETTES[name].light["--arc-normal"]);
-    // Update swatch active state
-    if (swatchPurple) {
-      swatchPurple.classList.toggle("active", name === "purple");
-      swatchPurple.setAttribute("aria-pressed", name === "purple" ? "true" : "false");
-    }
-    if (swatchGreen) {
-      swatchGreen.classList.toggle("active", name === "green");
-      swatchGreen.setAttribute("aria-pressed", name === "green" ? "true" : "false");
-    }
-    localStorage.setItem("stopper_palette", name);
-    renderClock();
-  }
+        function applyPalette(name) {
+          currentPalette = name;
+          const vars = PALETTES[name][isDark ? "dark" : "light"];
+          const root = document.documentElement;
+          for (const [k, v] of Object.entries(vars))
+            root.style.setProperty(k, v);
+          ccNormal = vars["--arc-normal"];
+          // Update theme-color meta
+          if (themeColorMeta)
+            themeColorMeta.setAttribute(
+              "content",
+              PALETTES[name].light["--arc-normal"],
+            );
+          // Update swatch active state
+          if (swatchPurple) {
+            swatchPurple.classList.toggle("active", name === "purple");
+            swatchPurple.setAttribute(
+              "aria-pressed",
+              name === "purple" ? "true" : "false",
+            );
+          }
+          if (swatchGreen) {
+            swatchGreen.classList.toggle("active", name === "green");
+            swatchGreen.setAttribute(
+              "aria-pressed",
+              name === "green" ? "true" : "false",
+            );
+          }
+          localStorage.setItem("stopper_palette", name);
+          renderClock();
+        }
 
-  // Timer accuracy: anchor point for drift-free countdown
-  let timerStartAt = 0;
-  let timerStartLeft = 0;
+        // Timer accuracy: anchor point for drift-free countdown
+        let timerStartAt = 0;
+        let timerStartLeft = 0;
 
-  const STROKE_W = 11;
-  const KNOB_R = 9;
-  const DRUM_REPS = 5;
-  const ITEM_H = 50;
-  const FRICTION = 0.88;
-  const MIN_VEL = 0.4;
-  const SNAP_LERP = 0.28;
-  const SNAP_THRESH = 0.35;
-  const SEL_CENTER = 75;
-  const SEL_OFFSET_BASE = SEL_CENTER - ITEM_H / 2; // 50
+        const STROKE_W = 11;
+        const KNOB_R = 9;
+        const DRUM_REPS = 5;
+        const ITEM_H = 50;
+        const FRICTION = 0.88;
+        const MIN_VEL = 0.4;
+        const SNAP_LERP = 0.28;
+        const SNAP_THRESH = 0.35;
+        const SEL_CENTER = 75;
+        const SEL_OFFSET_BASE = SEL_CENTER - ITEM_H / 2; // 50
 
-  const themeBtn = document.getElementById("theme-btn");
-  const swatchPurple = document.getElementById("swatch-purple");
-  const swatchGreen = document.getElementById("swatch-green");
-  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
-  const clockWrap = document.getElementById("clock-wrap");
-  const clockArea = document.querySelector(".clock-area");
-  const btnStop = document.getElementById("btn-stop");
-  const btnStart = document.getElementById("btn-start");
-  const drumMinEl = document.getElementById("drum-min");
-  const drumSecEl = document.getElementById("drum-sec");
-  let minDrum = null, secDrum = null;
+        const themeBtn = document.getElementById("theme-btn");
+        const swatchPurple = document.getElementById("swatch-purple");
+        const swatchGreen = document.getElementById("swatch-green");
+        const themeColorMeta = document.querySelector(
+          'meta[name="theme-color"]',
+        );
+        const clockWrap = document.getElementById("clock-wrap");
+        const clockArea = document.querySelector(".clock-area");
+        const btnStop = document.getElementById("btn-stop");
+        const btnStart = document.getElementById("btn-start");
+        const drumMinEl = document.getElementById("drum-min");
+        const drumSecEl = document.getElementById("drum-sec");
+        let minDrum = null,
+          secDrum = null;
 
-  function fullRedraw() {
-    tryInitDrums();
-    initPresetUI();
-    renderClock();
-    updateUI();
-    if (minDrum && minDrum.track) minDrum.scrollToValue(customMin, false);
-    if (secDrum && secDrum.track) secDrum.scrollToValue(customSec, false);
-  }
-  window.addEventListener("load", fullRedraw);
-  window.addEventListener("pageshow", (e) => { if (e.persisted) fullRedraw(); });
+        function fullRedraw() {
+          tryInitDrums();
+          initPresetUI();
+          renderClock();
+          updateUI();
+          if (minDrum && minDrum.track) minDrum.scrollToValue(customMin, false);
+          if (secDrum && secDrum.track) secDrum.scrollToValue(customSec, false);
+        }
+        window.addEventListener("load", fullRedraw);
+        window.addEventListener("pageshow", (e) => {
+          if (e.persisted) fullRedraw();
+        });
 
-  // ── Preset slots ──
-  let presets = Array(10).fill(null);
-  let presetCursorIdx = 0;
+        // ── Preset slots ──
+        let presets = Array(10).fill(null);
+        let presetCursorIdx = 0;
 
-  // ── localStorage ──
-  function savePreset() {
-    localStorage.setItem("stopper_min", customMin);
-    localStorage.setItem("stopper_sec", customSec);
-  }
+        // ── localStorage ──
+        function savePreset() {
+          localStorage.setItem("stopper_min", customMin);
+          localStorage.setItem("stopper_sec", customSec);
+        }
 
-  function loadPreset() {
-    const m = parseInt(localStorage.getItem("stopper_min"), 10);
-    const s = parseInt(localStorage.getItem("stopper_sec"), 10);
-    if (!isNaN(m) && m >= 0 && m <= 60) customMin = m;
-    if (!isNaN(s) && s >= 0 && s < 60) customSec = s;
-  }
+        function loadPreset() {
+          const m = parseInt(localStorage.getItem("stopper_min"), 10);
+          const s = parseInt(localStorage.getItem("stopper_sec"), 10);
+          if (!isNaN(m) && m >= 0 && m <= 60) customMin = m;
+          if (!isNaN(s) && s >= 0 && s < 60) customSec = s;
+        }
 
-  function loadPresets() {
-    try {
-      const saved = JSON.parse(localStorage.getItem("stopper_presets"));
-      if (Array.isArray(saved) && saved.length === 10) {
-        presets = saved;
-        return;
-      }
-    } catch (e) {}
-    presets[0] = { min: 1, sec: 0 };
-    presets[1] = { min: 1, sec: 30 };
-  }
+        function loadPresets() {
+          try {
+            const saved = JSON.parse(localStorage.getItem("stopper_presets"));
+            if (Array.isArray(saved) && saved.length === 10) {
+              presets = saved;
+              return;
+            }
+          } catch (e) {}
+          presets[0] = { min: 1, sec: 0 };
+          presets[1] = { min: 1, sec: 30 };
+        }
 
-  function savePresets() {
-    localStorage.setItem("stopper_presets", JSON.stringify(presets));
-  }
+        function savePresets() {
+          localStorage.setItem("stopper_presets", JSON.stringify(presets));
+        }
 
-  function presetLabel(p) {
-    if (!p) return "–";
-    return `${p.min}:${String(p.sec).padStart(2, "0")}`;
-  }
+        function presetLabel(p) {
+          if (!p) return "–";
+          return `${p.min}:${String(p.sec).padStart(2, "0")}`;
+        }
 
-  const P_COUNT = 10;
+        const P_COUNT = 10;
 
-  // ── Preset Drum (vízszintes dobtárcsa) ──
-  const PRESET_ITEM_W = 72;
-  let presetDrumOffset = 0;
-  let presetDrumVel = 0;
-  let presetDrumDragging = false;
-  let presetDrumLastX = 0;
-  let presetDrumLastTime = 0;
-  let presetDrumAnim = null;
-  let presetDrumInited = false;
-  let pdWrap = null, pdTrack = null, pdBtn = null;
-  let pdWrapW = 0;
-  let pdLastRenderedIdx = -1;
+        // ── Preset Drum (vízszintes dobtárcsa) ──
+        const PRESET_ITEM_W = 72;
+        let presetDrumOffset = 0;
+        let presetDrumVel = 0;
+        let presetDrumDragging = false;
+        let presetDrumLastX = 0;
+        let presetDrumLastTime = 0;
+        let presetDrumAnim = null;
+        let presetDrumInited = false;
+        let pdWrap = null,
+          pdTrack = null,
+          pdBtn = null;
+        let pdWrapW = 0;
+        let pdLastRenderedIdx = -1;
 
-  function pdCenterForIndex(idx) {
-    return pdWrapW / 2 - idx * PRESET_ITEM_W - PRESET_ITEM_W / 2;
-  }
+        function pdCenterForIndex(idx) {
+          return pdWrapW / 2 - idx * PRESET_ITEM_W - PRESET_ITEM_W / 2;
+        }
 
-  function pdCurrentIdx() {
-    const idx = Math.round((pdWrapW / 2 - presetDrumOffset - PRESET_ITEM_W / 2) / PRESET_ITEM_W);
-    return Math.max(0, Math.min(P_COUNT - 1, idx));
-  }
+        function pdCurrentIdx() {
+          const idx = Math.round(
+            (pdWrapW / 2 - presetDrumOffset - PRESET_ITEM_W / 2) /
+              PRESET_ITEM_W,
+          );
+          return Math.max(0, Math.min(P_COUNT - 1, idx));
+        }
 
-  function renderPresetDrum() {
-    if (!pdTrack || !pdWrapW) return;
-    const items = pdTrack.children;
-    const center = pdWrapW / 2;
+        function renderPresetDrum() {
+          if (!pdTrack || !pdWrapW) return;
+          const items = pdTrack.children;
+          const center = pdWrapW / 2;
 
-    pdTrack.style.transform = `translateX(${presetDrumOffset}px)`;
+          pdTrack.style.transform = `translateX(${presetDrumOffset}px)`;
 
-    for (let i = 0; i < items.length; i++) {
-      const itemCX = presetDrumOffset + i * PRESET_ITEM_W + PRESET_ITEM_W / 2;
-      const dist = Math.abs(itemCX - center) / PRESET_ITEM_W;
-      let op;
-      if (dist < 0.5) op = 1;
-      else if (dist < 1.5) op = 0.65;
-      else if (dist < 2.5) op = 0.4;
-      else op = 0.2;
-      items[i].style.opacity = op;
-    }
+          for (let i = 0; i < items.length; i++) {
+            const itemCX =
+              presetDrumOffset + i * PRESET_ITEM_W + PRESET_ITEM_W / 2;
+            const dist = Math.abs(itemCX - center) / PRESET_ITEM_W;
+            let op;
+            if (dist < 0.5) op = 1;
+            else if (dist < 1.5) op = 0.65;
+            else if (dist < 2.5) op = 0.4;
+            else op = 0.2;
+            items[i].style.opacity = op;
+          }
 
-    const newIdx = pdCurrentIdx();
-    if (newIdx !== pdLastRenderedIdx) {
-      pdLastRenderedIdx = newIdx;
-      presetCursorIdx = newIdx;
-      updateSaveLoadBtn();
-    }
-  }
+          const newIdx = pdCurrentIdx();
+          if (newIdx !== pdLastRenderedIdx) {
+            pdLastRenderedIdx = newIdx;
+            presetCursorIdx = newIdx;
+            updateSaveLoadBtn();
+          }
+        }
 
-  function updateSaveLoadBtn() {
-    if (!pdBtn) return;
-    pdBtn.disabled = state === "running";
-    const p = presets[presetCursorIdx];
-    if (p && totalSec === p.min * 60 + p.sec) {
-      pdBtn.textContent = "Load";
-      pdBtn.classList.add("load-mode");
-    } else {
-      pdBtn.textContent = "Save";
-      pdBtn.classList.remove("load-mode");
-    }
-  }
+        function updateSaveLoadBtn() {
+          if (!pdBtn) return;
+          pdBtn.disabled = state === "running";
+          const p = presets[presetCursorIdx];
+          if (p && totalSec === p.min * 60 + p.sec) {
+            pdBtn.textContent = "Load";
+            pdBtn.classList.add("load-mode");
+          } else {
+            pdBtn.textContent = "Save";
+            pdBtn.classList.remove("load-mode");
+          }
+        }
 
-  function presetDrumScrollTo(idx, animated) {
-    if (presetDrumAnim) { cancelAnimationFrame(presetDrumAnim); presetDrumAnim = null; }
-    const target = pdCenterForIndex(idx);
-    if (!animated) {
-      presetDrumOffset = target;
-      renderPresetDrum();
-      return;
-    }
-    const animate = () => {
-      const delta = target - presetDrumOffset;
-      if (Math.abs(delta) < SNAP_THRESH) {
-        presetDrumOffset = target;
-        renderPresetDrum();
-        return;
-      }
-      presetDrumOffset += delta * SNAP_LERP;
-      renderPresetDrum();
-      presetDrumAnim = requestAnimationFrame(animate);
-    };
-    presetDrumAnim = requestAnimationFrame(animate);
-  }
+        function presetDrumScrollTo(idx, animated) {
+          if (presetDrumAnim) {
+            cancelAnimationFrame(presetDrumAnim);
+            presetDrumAnim = null;
+          }
+          const target = pdCenterForIndex(idx);
+          if (!animated) {
+            presetDrumOffset = target;
+            renderPresetDrum();
+            return;
+          }
+          const animate = () => {
+            const delta = target - presetDrumOffset;
+            if (Math.abs(delta) < SNAP_THRESH) {
+              presetDrumOffset = target;
+              renderPresetDrum();
+              return;
+            }
+            presetDrumOffset += delta * SNAP_LERP;
+            renderPresetDrum();
+            presetDrumAnim = requestAnimationFrame(animate);
+          };
+          presetDrumAnim = requestAnimationFrame(animate);
+        }
 
-  function renderPresets() {
-    if (!pdTrack) return;
-    const items = pdTrack.children;
-    for (let i = 0; i < items.length; i++) {
-      items[i].textContent = presetLabel(presets[i]);
-    }
-    renderPresetDrum();
-  }
+        function renderPresets() {
+          if (!pdTrack) return;
+          const items = pdTrack.children;
+          for (let i = 0; i < items.length; i++) {
+            items[i].textContent = presetLabel(presets[i]);
+          }
+          renderPresetDrum();
+        }
 
-  function initPresetUI() {
-    pdWrap = document.getElementById("preset-drum");
-    pdTrack = document.getElementById("preset-track");
-    pdBtn = document.getElementById("btn-save-preset");
-    if (!pdWrap || !pdTrack || !pdBtn) return;
+        function initPresetUI() {
+          pdWrap = document.getElementById("preset-drum");
+          pdTrack = document.getElementById("preset-track");
+          pdBtn = document.getElementById("btn-save-preset");
+          if (!pdWrap || !pdTrack || !pdBtn) return;
 
-    if (presetDrumInited) { renderPresets(); return; }
-    presetDrumInited = true;
+          if (presetDrumInited) {
+            renderPresets();
+            return;
+          }
+          presetDrumInited = true;
 
-    pdWrapW = pdWrap.clientWidth;
+          pdWrapW = pdWrap.clientWidth;
 
-    for (let i = 0; i < P_COUNT; i++) {
-      const item = document.createElement("div");
-      item.className = "preset-drum-item";
-      item.textContent = presetLabel(presets[i]);
-      pdTrack.appendChild(item);
-    }
+          for (let i = 0; i < P_COUNT; i++) {
+            const item = document.createElement("div");
+            item.className = "preset-drum-item";
+            item.textContent = presetLabel(presets[i]);
+            pdTrack.appendChild(item);
+          }
 
-    presetDrumOffset = pdCenterForIndex(presetCursorIdx);
-    renderPresetDrum();
+          presetDrumOffset = pdCenterForIndex(presetCursorIdx);
+          renderPresetDrum();
 
-    pdWrap.addEventListener("pointerdown", (e) => {
-      if (state === "running") return;
-      e.preventDefault();
-      pdWrap.setPointerCapture(e.pointerId);
-      presetDrumDragging = true;
-      presetDrumLastX = e.clientX;
-      presetDrumLastTime = Date.now();
-      presetDrumVel = 0;
-      if (presetDrumAnim) { cancelAnimationFrame(presetDrumAnim); presetDrumAnim = null; }
-    });
+          pdWrap.addEventListener("pointerdown", (e) => {
+            if (state === "running") return;
+            e.preventDefault();
+            pdWrap.setPointerCapture(e.pointerId);
+            presetDrumDragging = true;
+            presetDrumLastX = e.clientX;
+            presetDrumLastTime = Date.now();
+            presetDrumVel = 0;
+            if (presetDrumAnim) {
+              cancelAnimationFrame(presetDrumAnim);
+              presetDrumAnim = null;
+            }
+          });
 
-    pdWrap.addEventListener("pointermove", (e) => {
-      if (!presetDrumDragging) return;
-      e.preventDefault();
-      const now = Date.now();
-      const dx = e.clientX - presetDrumLastX;
-      const dt = now - presetDrumLastTime;
-      if (dt > 0) presetDrumVel = dx / dt;
-      presetDrumLastX = e.clientX;
-      presetDrumLastTime = now;
-      presetDrumOffset += dx;
-      const minOff = pdCenterForIndex(P_COUNT - 1);
-      const maxOff = pdCenterForIndex(0);
-      presetDrumOffset = Math.max(minOff - PRESET_ITEM_W, Math.min(maxOff + PRESET_ITEM_W, presetDrumOffset));
-      renderPresetDrum();
-    });
+          pdWrap.addEventListener("pointermove", (e) => {
+            if (!presetDrumDragging) return;
+            e.preventDefault();
+            const now = Date.now();
+            const dx = e.clientX - presetDrumLastX;
+            const dt = now - presetDrumLastTime;
+            if (dt > 0) presetDrumVel = dx / dt;
+            presetDrumLastX = e.clientX;
+            presetDrumLastTime = now;
+            presetDrumOffset += dx;
+            const minOff = pdCenterForIndex(P_COUNT - 1);
+            const maxOff = pdCenterForIndex(0);
+            presetDrumOffset = Math.max(
+              minOff - PRESET_ITEM_W,
+              Math.min(maxOff + PRESET_ITEM_W, presetDrumOffset),
+            );
+            renderPresetDrum();
+          });
 
-    const onUp = () => {
-      if (!presetDrumDragging) return;
-      presetDrumDragging = false;
-      let vel = presetDrumVel * 80;
-      const minOff = pdCenterForIndex(P_COUNT - 1);
-      const maxOff = pdCenterForIndex(0);
-      const step = () => {
-        vel *= FRICTION;
-        if (Math.abs(vel) < MIN_VEL) { presetDrumScrollTo(pdCurrentIdx(), true); return; }
-        presetDrumOffset += vel;
-        presetDrumOffset = Math.max(minOff - PRESET_ITEM_W / 2, Math.min(maxOff + PRESET_ITEM_W / 2, presetDrumOffset));
-        renderPresetDrum();
-        presetDrumAnim = requestAnimationFrame(step);
-      };
-      presetDrumAnim = requestAnimationFrame(step);
-    };
-    pdWrap.addEventListener("pointerup", onUp);
-    pdWrap.addEventListener("pointercancel", onUp);
+          const onUp = () => {
+            if (!presetDrumDragging) return;
+            presetDrumDragging = false;
+            let vel = presetDrumVel * 80;
+            const minOff = pdCenterForIndex(P_COUNT - 1);
+            const maxOff = pdCenterForIndex(0);
+            const step = () => {
+              vel *= FRICTION;
+              if (Math.abs(vel) < MIN_VEL) {
+                presetDrumScrollTo(pdCurrentIdx(), true);
+                return;
+              }
+              presetDrumOffset += vel;
+              presetDrumOffset = Math.max(
+                minOff - PRESET_ITEM_W / 2,
+                Math.min(maxOff + PRESET_ITEM_W / 2, presetDrumOffset),
+              );
+              renderPresetDrum();
+              presetDrumAnim = requestAnimationFrame(step);
+            };
+            presetDrumAnim = requestAnimationFrame(step);
+          };
+          pdWrap.addEventListener("pointerup", onUp);
+          pdWrap.addEventListener("pointercancel", onUp);
 
-    pdBtn.addEventListener("click", () => {
-      const p = presets[presetCursorIdx];
-      if (p && totalSec === p.min * 60 + p.sec) {
-        setDuration(p.min * 60 + p.sec);
-      } else {
-        presets[presetCursorIdx] = { min: customMin, sec: customSec };
-        savePresets();
-      }
-      renderPresets();
-    });
+          pdBtn.addEventListener("click", () => {
+            const p = presets[presetCursorIdx];
+            if (p && totalSec === p.min * 60 + p.sec) {
+              setDuration(p.min * 60 + p.sec);
+            } else {
+              presets[presetCursorIdx] = { min: customMin, sec: customSec };
+              savePresets();
+            }
+            renderPresets();
+          });
 
-    let pdResizeRaf = null;
-    new ResizeObserver(() => {
-      if (pdResizeRaf) return;
-      pdResizeRaf = requestAnimationFrame(() => {
-        pdResizeRaf = null;
-        pdWrapW = pdWrap.clientWidth;
-        presetDrumOffset = pdCenterForIndex(presetCursorIdx);
-        renderPresetDrum();
-      });
-    }).observe(pdWrap);
-  }
+          let pdResizeRaf = null;
+          new ResizeObserver(() => {
+            if (pdResizeRaf) return;
+            pdResizeRaf = requestAnimationFrame(() => {
+              pdResizeRaf = null;
+              pdWrapW = pdWrap.clientWidth;
+              presetDrumOffset = pdCenterForIndex(presetCursorIdx);
+              renderPresetDrum();
+            });
+          }).observe(pdWrap);
+        }
 
-  // ── Theme ──
-  function setTheme(dark) {
-    isDark = dark;
-    ccTrack = dark ? "#2e2c44" : "#1c1c2e";
-    ccAlert = dark ? "#cc2f26" : "#ff3b30";
-    document.documentElement.setAttribute("data-theme", dark ? "dark" : "");
-    document.body.style.backgroundColor = dark ? "#1a1a24" : "#f2f2f7";
-    document.documentElement.style.backgroundColor = dark ? "#1a1a24" : "#f2f2f7";
-    themeBtn.textContent = dark ? "Világos" : "Sötét";
-    themeBtn.setAttribute("aria-label", dark ? "Téma váltása világosra" : "Téma váltása sötétre");
-    themeBtn.setAttribute("aria-pressed", dark ? "true" : "false");
-    localStorage.setItem("stopper_theme", dark ? "dark" : "light");
-    applyPalette(currentPalette);
-  }
-  themeBtn.addEventListener("click", () => setTheme(!isDark));
+        // ── Theme ──
+        function setTheme(dark) {
+          isDark = dark;
+          ccTrack = dark ? "#2e2c44" : "#1c1c2e";
+          ccAlert = dark ? "#cc2f26" : "#ff3b30";
+          document.documentElement.setAttribute(
+            "data-theme",
+            dark ? "dark" : "",
+          );
+          document.body.style.backgroundColor = dark ? "#1a1a24" : "#f2f2f7";
+          document.documentElement.style.backgroundColor = dark
+            ? "#1a1a24"
+            : "#f2f2f7";
+          themeBtn.textContent = dark ? "Világos" : "Sötét";
+          themeBtn.setAttribute(
+            "aria-label",
+            dark ? "Téma váltása világosra" : "Téma váltása sötétre",
+          );
+          themeBtn.setAttribute("aria-pressed", dark ? "true" : "false");
+          localStorage.setItem("stopper_theme", dark ? "dark" : "light");
+          applyPalette(currentPalette);
+        }
+        themeBtn.addEventListener("click", () => setTheme(!isDark));
 
-  // ── Clock ──
-  function getClockSize() {
-    if (clockArea) {
-      const h = clockArea.clientHeight;
-      const w = clockArea.clientWidth;
-      if (h > 40 && w > 40) return Math.min(w, h) - 4;
-    }
-    const vp = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
-    return Math.max(80, Math.min(vp.width - 32, vp.height - 220));
-  }
+        // ── Clock ──
+        function getClockSize() {
+          if (clockArea) {
+            const h = clockArea.clientHeight;
+            const w = clockArea.clientWidth;
+            if (h > 40 && w > 40) return Math.min(w, h) - 4;
+          }
+          const vp = window.visualViewport || {
+            width: window.innerWidth,
+            height: window.innerHeight,
+          };
+          return Math.max(80, Math.min(vp.width - 32, vp.height - 220));
+        }
 
-  function renderClock() {
-    if (!clockWrap) return;
-    const sz = getClockSize();
-    const r = sz / 2 - STROKE_W - KNOB_R - 2;
-    const cx = sz / 2, cy = sz / 2;
-    const displayTime = dragActive ? dragFloatTime : timeLeft;
-    const isAlert = timeLeft <= 10 && (state !== "idle" || timeLeft < totalSec);
-    const arcColor = isAlert ? ccAlert : ccNormal;
-    const trackColor = ccTrack;
-    const frac = totalSec > 0 ? displayTime / totalSec : 0;
+        function renderClock() {
+          if (!clockWrap) return;
+          const sz = getClockSize();
+          const r = sz / 2 - STROKE_W - KNOB_R - 2;
+          const cx = sz / 2,
+            cy = sz / 2;
+          const displayTime = dragActive ? dragFloatTime : timeLeft;
+          const isAlert =
+            timeLeft <= 10 && (state !== "idle" || timeLeft < totalSec);
+          const arcColor = isAlert ? ccAlert : ccNormal;
+          const trackColor = ccTrack;
+          const frac = totalSec > 0 ? displayTime / totalSec : 0;
 
-    let arcSvg = "";
-    let knobSvg = "";
+          let arcSvg = "";
+          let knobSvg = "";
 
-    if (frac > 0 && frac < 1) {
-      const angle = frac * 360;
-      const startRad = (-90 * Math.PI) / 180;
-      const endRad = ((-90 + angle) * Math.PI) / 180;
-      const sx = cx + r * Math.cos(startRad);
-      const sy = cy + r * Math.sin(startRad);
-      const kx = cx + r * Math.cos(endRad);
-      const ky = cy + r * Math.sin(endRad);
-      const largeArc = angle > 180 ? 1 : 0;
-      arcSvg = `<path d="M${sx},${sy} A${r},${r} 0 ${largeArc} 1 ${kx},${ky}" fill="none" stroke="${arcColor}" stroke-width="${STROKE_W}" stroke-linecap="round"/>`;
-      knobSvg = `<circle cx="${kx}" cy="${ky}" r="${KNOB_R}" fill="${arcColor}"/>`;
-    } else if (frac >= 1) {
-      arcSvg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${arcColor}" stroke-width="${STROKE_W}"/>`;
-      knobSvg = `<circle cx="${cx}" cy="${cy - r}" r="${KNOB_R}" fill="${arcColor}"/>`;
-    }
+          if (frac > 0 && frac < 1) {
+            const angle = frac * 360;
+            const startRad = (-90 * Math.PI) / 180;
+            const endRad = ((-90 + angle) * Math.PI) / 180;
+            const sx = cx + r * Math.cos(startRad);
+            const sy = cy + r * Math.sin(startRad);
+            const kx = cx + r * Math.cos(endRad);
+            const ky = cy + r * Math.sin(endRad);
+            const largeArc = angle > 180 ? 1 : 0;
+            arcSvg = `<path d="M${sx},${sy} A${r},${r} 0 ${largeArc} 1 ${kx},${ky}" fill="none" stroke="${arcColor}" stroke-width="${STROKE_W}" stroke-linecap="round"/>`;
+            knobSvg = `<circle cx="${kx}" cy="${ky}" r="${KNOB_R}" fill="${arcColor}"/>`;
+          } else if (frac >= 1) {
+            arcSvg = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${arcColor}" stroke-width="${STROKE_W}"/>`;
+            knobSvg = `<circle cx="${cx}" cy="${cy - r}" r="${KNOB_R}" fill="${arcColor}"/>`;
+          }
 
-    const digitSize = Math.max(14, sz * 0.21);
-    let digitText;
-    if (state === "finished") {
-      digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${r * 0.38}" font-weight="800" fill="${arcColor}">GO GO GO</text>`;
-    } else {
-      const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-      const ss = String(timeLeft % 60).padStart(2, "0");
-      digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${digitSize}" font-weight="800" fill="${arcColor}">${mm}:${ss}</text>`;
-    }
+          const digitSize = Math.max(14, sz * 0.21);
+          let digitText;
+          if (state === "finished") {
+            digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${r * 0.38}" font-weight="800" fill="${arcColor}">GO GO GO</text>`;
+          } else {
+            const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+            const ss = String(timeLeft % 60).padStart(2, "0");
+            digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${digitSize}" font-weight="800" fill="${arcColor}">${mm}:${ss}</text>`;
+          }
 
-    clockWrap.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true">
+          clockWrap.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true">
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${trackColor}" stroke-width="${STROKE_W}"/>
       ${arcSvg}${knobSvg}${digitText}
     </svg>`;
 
-    // Update ARIA label for screen readers
-    const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
-    const ss = String(timeLeft % 60).padStart(2, "0");
-    clockWrap.setAttribute("aria-label",
-      state === "finished" ? "Idő lejárt!" : `Hátralévő idő: ${mm}:${ss}`);
-  }
-
-  // ── Pointer on clock ──
-  let dragActive = false;
-  let dragReady = false; // pointerdown a knob közelében történt
-  let dragFloatTime = 0; // tört másodperc drag közben (sima mozgás)
-  let pointerDownTime = 0;
-  let pointerMoved = false;
-  let dragLastDeg = 0;
-
-  clockWrap.addEventListener("pointerdown", (e) => {
-    e.preventDefault();
-    clockWrap.setPointerCapture(e.pointerId);
-    pointerDownTime = Date.now();
-    pointerMoved = false;
-    dragActive = false;
-    dragReady = false;
-
-    const rect = clockWrap.getBoundingClientRect();
-    const sz = getClockSize();
-    const r = sz / 2 - STROKE_W - KNOB_R - 2;
-    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
-    const px = e.clientX, py = e.clientY;
-
-    if (Math.hypot(px - cxS, py - cyS) > r + STROKE_W / 2) return;
-
-    const frac = totalSec > 0 ? timeLeft / totalSec : 0;
-    const endRad = ((-90 + frac * 360) * Math.PI) / 180;
-    const kx = cxS + r * Math.cos(endRad);
-    const ky = cyS + r * Math.sin(endRad);
-
-    if (Math.hypot(px - kx, py - ky) < 60 && state !== "finished") {
-      // Az ujj aktuális szöge (nem a knob-é!) – így nincs ugrás induláskor
-      let startDeg = Math.atan2(py - cyS, px - cxS) * (180 / Math.PI) + 90;
-      if (startDeg < 0) startDeg += 360;
-      dragLastDeg = startDeg;
-      dragFloatTime = timeLeft;
-      dragReady = true; // készen áll – első move-nál aktiválódik
-    }
-  });
-
-  clockWrap.addEventListener("pointermove", (e) => {
-    pointerMoved = true;
-    const rect = clockWrap.getBoundingClientRect();
-    const sz = getClockSize();
-    const r = sz / 2 - STROKE_W - KNOB_R - 2;
-    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
-
-    let deg = Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
-    if (deg < 0) deg += 360;
-
-    // Ha dragReady de még nem aktív, az első move-nál aktiváljuk (0ms késleltetés)
-    if (!dragActive && dragReady) {
-      dragActive = true;
-      dragReady = false;
-      if (state === "running") stopTimer();
-      dragLastDeg = deg; // frissítjük, hogy ne legyen ugrás
-    }
-    if (!dragActive) return;
-    e.preventDefault();
-
-    // Szögirány ellenőrzése (delta: + = CW, - = CCW)
-    let deltaDeg = deg - dragLastDeg;
-    if (deltaDeg > 180) deltaDeg -= 360;
-    else if (deltaDeg < -180) deltaDeg += 360;
-
-    // Max 45° per event – csak az extrém ugrásokat szűrjük
-    deltaDeg = Math.max(-45, Math.min(45, deltaDeg));
-
-    // Tört másodperces számítás – sima ív mozgás
-    const deltaSec = (deltaDeg / 360) * totalSec;
-    dragFloatTime = Math.max(1, Math.min(totalSec, dragFloatTime + deltaSec));
-    dragLastDeg = deg;
-    timeLeft = Math.round(dragFloatTime);
-    renderClock();
-  });
-
-  clockWrap.addEventListener("pointerup", (e) => {
-    dragReady = false;
-    if (dragActive) {
-      dragActive = false;
-      renderClock();
-      updateUI();
-      return;
-    }
-    if (pointerMoved && Date.now() - pointerDownTime > 300) return;
-
-    const rect = clockWrap.getBoundingClientRect();
-    const sz = getClockSize();
-    const r = sz / 2 - STROKE_W - KNOB_R - 2;
-    const cxS = rect.left + sz / 2, cyS = rect.top + sz / 2;
-    if (Math.hypot(e.clientX - cxS, e.clientY - cyS) > r + STROKE_W / 2) return;
-
-    if (state === "running") stopTimer();
-    else if (state === "idle" || state === "paused") { unlockTTS(); startTimer(); }
-  });
-
-  // ── Timer (drift-compensated via performance.now()) ──
-  function startTimer() {
-    if (totalSec < 1) return;
-    if (state === "idle") { lastSpoken = -1; }
-    state = "running";
-    timerStartAt = performance.now();
-    timerStartLeft = timeLeft;
-    scheduleNextTick();
-    updateUI();
-  }
-
-  function scheduleNextTick() {
-    if (state !== "running") return;
-    const msElapsed = performance.now() - timerStartAt;
-    const msToNext = 1000 - (msElapsed % 1000);
-    tickTimer = setTimeout(tick, Math.max(10, msToNext));
-  }
-
-  function tick() {
-    if (state !== "running") return;
-    const secElapsed = Math.floor((performance.now() - timerStartAt) / 1000);
-    const newLeft = Math.max(0, timerStartLeft - secElapsed);
-
-    // Speak any skipped countdown values (e.g. after device wake-up)
-    for (let t = timeLeft - 1; t >= newLeft && t >= 0; t--) {
-      if (t <= 10) speak(t);
-    }
-    timeLeft = newLeft;
-
-    if (timeLeft <= 0) {
-      timeLeft = 0; state = "finished";
-      playBeep(); vibrate();
-      renderClock(); updateUI();
-      finishTimer = setTimeout(resetToIdle, 5000);
-      return;
-    }
-    renderClock(); updateUI(); scheduleNextTick();
-  }
-
-  function stopTimer() {
-    clearTimeout(tickTimer); tickTimer = null;
-    state = "paused"; updateUI();
-  }
-
-  function clearTimers() {
-    clearTimeout(tickTimer); clearTimeout(finishTimer);
-    tickTimer = null; finishTimer = null;
-  }
-
-  function resetToIdleState() {
-    clearTimers();
-    state = "idle"; lastSpoken = -1;
-  }
-
-  function resetToIdle() {
-    resetToIdleState();
-    timeLeft = totalSec;
-    renderClock(); updateUI();
-  }
-
-  // ── Visibility change (sleep/wake sync) ──
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible" && state === "running") {
-      clearTimeout(tickTimer); tickTimer = null;
-      tick(); // Re-sync immediately on wake
-    }
-  });
-
-  // ── Audio beep (Web Audio API) ──
-  function playBeep() {
-    try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain); gain.connect(ctx.destination);
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(440, ctx.currentTime + 0.6);
-      gain.gain.setValueAtTime(0.5, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.8);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.8);
-      setTimeout(() => ctx.close(), 1500);
-    } catch(e) {}
-  }
-
-  // ── Vibration (mobile) ──
-  function vibrate() {
-    try { if (navigator.vibrate) navigator.vibrate([200, 100, 200]); } catch(e) {}
-  }
-
-  // ── TTS ──
-  function unlockTTS() {
-    if (ttsUnlocked) return;
-    const u = new SpeechSynthesisUtterance("\u200b");
-    u.volume = 0; u.lang = "hu-HU";
-    speechSynthesis.speak(u); ttsUnlocked = true;
-  }
-  function findHuVoice() { return speechSynthesis.getVoices().find(v => v.lang && v.lang.startsWith("hu")) || null; }
-  speechSynthesis.addEventListener("voiceschanged", () => { preferredVoice = findHuVoice(); });
-  preferredVoice = findHuVoice();
-
-  const HU = {10:"tíz",9:"kilenc",8:"nyolc",7:"hét",6:"hat",5:"öt",4:"négy",3:"három",2:"kettő",1:"egy",0:"go go go"};
-  function speak(n) {
-    if (lastSpoken === n) return;
-    lastSpoken = n;
-    const w = HU[n]; if (!w) return;
-    speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(w);
-    u.lang = "hu-HU";
-    if (preferredVoice) u.voice = preferredVoice;
-    if (n === 0) u.rate = 0.85;
-    speechSynthesis.speak(u);
-  }
-
-
-  // ── UI ──
-  function updateUI() {
-    switch (state) {
-      case "idle":
-        if (timeLeft < totalSec) {
-          btnStop.style.visibility = "visible";
-          btnStop.textContent = "↺ Reset"; btnStop.setAttribute("aria-label", "Visszaállítás");
-        } else {
-          btnStop.style.visibility = "hidden";
-          btnStop.textContent = "⏹ Stop"; btnStop.setAttribute("aria-label", "Stop");
+          // Update ARIA label for screen readers
+          const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
+          const ss = String(timeLeft % 60).padStart(2, "0");
+          clockWrap.setAttribute(
+            "aria-label",
+            state === "finished" ? "Idő lejárt!" : `Hátralévő idő: ${mm}:${ss}`,
+          );
         }
-        btnStart.textContent = "▶ Indít"; btnStart.disabled = false;
-        btnStart.setAttribute("aria-label", "Indítás"); break;
-      case "running":
-        btnStop.style.visibility = "visible";
-        btnStop.textContent = "⏹ Stop"; btnStop.setAttribute("aria-label", "Megállítás");
-        btnStart.textContent = "▶ Indít"; btnStart.disabled = true;
-        btnStart.setAttribute("aria-label", "Indítás"); break;
-      case "paused":
-        btnStop.style.visibility = "visible";
-        btnStop.textContent = "↺ Reset"; btnStop.setAttribute("aria-label", "Visszaállítás");
-        btnStart.textContent = "▶ Folytat"; btnStart.disabled = false;
-        btnStart.setAttribute("aria-label", "Folytatás"); break;
-      case "finished":
-        btnStop.style.visibility = "visible";
-        btnStop.textContent = "↺ Reset"; btnStop.setAttribute("aria-label", "Visszaállítás");
-        btnStart.textContent = "▶ Indít"; btnStart.disabled = true;
-        btnStart.setAttribute("aria-label", "Indítás"); break;
-    }
-    renderPresets();
 
-    if (pdWrap) pdWrap.classList.toggle("locked", state === "running");
+        // ── Pointer on clock ──
+        let dragActive = false;
+        let dragReady = false; // pointerdown a knob közelében történt
+        let dragFloatTime = 0; // tört másodperc drag közben (sima mozgás)
+        let pointerDownTime = 0;
+        let pointerMoved = false;
+        let dragLastDeg = 0;
 
-    const drumLocked = state === "running";
-    drumMinEl.classList.toggle("locked", drumLocked);
-    drumSecEl.classList.toggle("locked", drumLocked || customMin === 60);
+        clockWrap.addEventListener("pointerdown", (e) => {
+          e.preventDefault();
+          clockWrap.setPointerCapture(e.pointerId);
+          pointerDownTime = Date.now();
+          pointerMoved = false;
+          dragActive = false;
+          dragReady = false;
 
-    // Update ARIA values on drum spinbuttons
-    drumMinEl.setAttribute("aria-valuenow", customMin);
-    drumSecEl.setAttribute("aria-valuenow", customSec);
+          const rect = clockWrap.getBoundingClientRect();
+          const sz = getClockSize();
+          const r = sz / 2 - STROKE_W - KNOB_R - 2;
+          const cxS = rect.left + sz / 2,
+            cyS = rect.top + sz / 2;
+          const px = e.clientX,
+            py = e.clientY;
 
-    renderClock();
-  }
+          if (Math.hypot(px - cxS, py - cyS) > r + STROKE_W / 2) return;
 
-  // ── Buttons ──
-  btnStop.addEventListener("click", () => {
-    if (state === "running") stopTimer();
-    else resetToIdle();
-  });
-  btnStart.addEventListener("click", () => {
-    if (state === "idle" || state === "paused") { unlockTTS(); startTimer(); }
-  });
+          const frac = totalSec > 0 ? timeLeft / totalSec : 0;
+          const endRad = ((-90 + frac * 360) * Math.PI) / 180;
+          const kx = cxS + r * Math.cos(endRad);
+          const ky = cyS + r * Math.sin(endRad);
 
-  // ── Quick duration ──
-  function setDuration(sec) {
-    if (state === "running") return;
-    if (state === "paused" || state === "finished") {
-      resetToIdleState();
-    }
-    totalSec = sec; timeLeft = sec;
-    customMin = Math.floor(sec / 60); customSec = sec % 60;
-    if (minDrum) minDrum.scrollToValue(customMin, true);
-    if (secDrum) secDrum.scrollToValue(customSec, true);
-    savePreset();
-    updateUI();
-  }
-
-  // ── Drum ──
-  class Drum {
-    constructor(el, count, onChange, onSettled) {
-      this.el = el;
-      this.count = count;
-      this.onChange = onChange;
-      this.onSettled = onSettled || null;
-      this.totalItems = count * DRUM_REPS;
-      this.offset = 0;
-      this.value = 0;
-      this.velocity = 0;
-      this.animFrame = null;
-      this.isDragging = false;
-      this.lastY = 0;
-      this.lastTime = 0;
-      this.build();
-      this.bind();
-      this.scrollToValue(0, false); // Kezdeti renderelés garantálása
-    }
-
-    _offsetForIndex(idx) { return SEL_OFFSET_BASE - idx * ITEM_H; }
-    _indexFromOffset() { return Math.round((SEL_OFFSET_BASE - this.offset) / ITEM_H); }
-
-    build() {
-      this.el.innerHTML = "";
-      const sel = document.createElement("div"); sel.className = "drum-sel"; this.el.appendChild(sel);
-      this.track = document.createElement("div"); this.track.className = "drum-track";
-      for (let i = 0; i < this.totalItems; i++) {
-        const d = document.createElement("div"); d.className = "drum-item";
-        d.textContent = String(i % this.count).padStart(2, "0");
-        this.track.appendChild(d);
-      }
-      this.el.appendChild(this.track);
-      const ft = document.createElement("div"); ft.className = "drum-fade-top";
-      const fb = document.createElement("div"); fb.className = "drum-fade-bottom";
-      this.el.appendChild(ft); this.el.appendChild(fb);
-    }
-
-    bind() {
-      this.el.addEventListener("pointerdown", (e) => this.onDown(e));
-      this.el.addEventListener("pointermove", (e) => this.onMove(e));
-      this.el.addEventListener("pointerup", () => this.onUp());
-      this.el.addEventListener("pointercancel", () => this.onUp());
-    }
-
-    onDown(e) {
-      if (state === "running") return;
-      e.preventDefault();
-      this.el.setPointerCapture(e.pointerId);
-      this.isDragging = true;
-      this.lastY = e.clientY;
-      this.lastTime = Date.now();
-      this.velocity = 0;
-      if (this.animFrame) { cancelAnimationFrame(this.animFrame); this.animFrame = null; }
-    }
-
-    onMove(e) {
-      if (!this.isDragging) return;
-      e.preventDefault();
-      const now = Date.now();
-      const dy = e.clientY - this.lastY;
-      const dt = now - this.lastTime;
-      if (dt > 0) this.velocity = dy / dt;
-      this.lastY = e.clientY;
-      this.lastTime = now;
-      this.offset += dy;
-      this._normalize();
-      this._renderItems();
-      this._emitValue();
-    }
-
-    onUp() {
-      if (!this.isDragging) return;
-      this.isDragging = false;
-      this._startInertia();
-    }
-
-    _normalize() {
-      const oneRepH = this.count * ITEM_H;
-      const idx = this._indexFromOffset();
-      if (idx < this.count) this.offset -= oneRepH;
-      else if (idx >= this.totalItems - this.count) this.offset += oneRepH;
-    }
-
-    _startInertia() {
-      let vel = this.velocity * 80;
-      const step = () => {
-        vel *= FRICTION;
-        if (Math.abs(vel) < MIN_VEL) { this._snapNearest(); return; }
-        this.offset += vel;
-        this._normalize();
-        this._renderItems();
-        this._emitValue();
-        this.animFrame = requestAnimationFrame(step);
-      };
-      this.animFrame = requestAnimationFrame(step);
-    }
-
-    _snapNearest() {
-      const idx = this._indexFromOffset();
-      const target = this._offsetForIndex(idx);
-      const animate = () => {
-        const delta = target - this.offset;
-        if (Math.abs(delta) < SNAP_THRESH) {
-          this.offset = target;
-          this._renderItems(); this._emitValue();
-          if (this.onSettled) this.onSettled(this.value);
-          return;
-        }
-        this.offset += delta * SNAP_LERP;
-        this._renderItems();
-        this.animFrame = requestAnimationFrame(animate);
-      };
-      this.animFrame = requestAnimationFrame(animate);
-    }
-
-    _emitValue() {
-      const idx = this._indexFromOffset();
-      const val = ((idx % this.count) + this.count) % this.count;
-      if (val !== this.value) { this.value = val; this.onChange(val); }
-    }
-
-    _renderItems() {
-      this.track.style.transform = `translateY(${this.offset}px)`;
-      const ch = this.track.children;
-      for (let i = 0; i < ch.length; i++) {
-        const itemCY = this.offset + i * ITEM_H + ITEM_H / 2;
-        const slots = Math.abs(itemCY - SEL_CENTER) / ITEM_H;
-        let op, sc;
-        if (slots < 0.5) { op = 1; sc = 1.18; }
-        else if (slots < 1.5) { op = 0.55; sc = 1; }
-        else if (slots < 2.5) { op = 0.22; sc = 1; }
-        else { op = 0.07; sc = 1; }
-        ch[i].style.opacity = op;
-        ch[i].style.transform = `scale(${sc})`;
-      }
-    }
-
-    scrollToValue(val, animated) {
-      if (this.animFrame) { cancelAnimationFrame(this.animFrame); this.animFrame = null; }
-      const midRep = Math.floor(DRUM_REPS / 2);
-      const idx = midRep * this.count + val;
-      const target = this._offsetForIndex(idx);
-      if (animated) {
-        const animate = () => {
-          const delta = target - this.offset;
-          if (Math.abs(delta) < SNAP_THRESH) {
-            this.offset = target; this.value = val; this._renderItems(); return;
+          if (Math.hypot(px - kx, py - ky) < 60 && state !== "finished") {
+            // Az ujj aktuális szöge (nem a knob-é!) – így nincs ugrás induláskor
+            let startDeg =
+              Math.atan2(py - cyS, px - cxS) * (180 / Math.PI) + 90;
+            if (startDeg < 0) startDeg += 360;
+            dragLastDeg = startDeg;
+            dragFloatTime = timeLeft;
+            dragReady = true; // készen áll – első move-nál aktiválódik
           }
-          this.offset += delta * SNAP_LERP;
-          this._renderItems();
-          this.animFrame = requestAnimationFrame(animate);
+        });
+
+        clockWrap.addEventListener("pointermove", (e) => {
+          pointerMoved = true;
+          const rect = clockWrap.getBoundingClientRect();
+          const sz = getClockSize();
+          const r = sz / 2 - STROKE_W - KNOB_R - 2;
+          const cxS = rect.left + sz / 2,
+            cyS = rect.top + sz / 2;
+
+          let deg =
+            Math.atan2(e.clientY - cyS, e.clientX - cxS) * (180 / Math.PI) + 90;
+          if (deg < 0) deg += 360;
+
+          // Ha dragReady de még nem aktív, az első move-nál aktiváljuk (0ms késleltetés)
+          if (!dragActive && dragReady) {
+            dragActive = true;
+            dragReady = false;
+            if (state === "running") stopTimer();
+            dragLastDeg = deg; // frissítjük, hogy ne legyen ugrás
+          }
+          if (!dragActive) return;
+          e.preventDefault();
+
+          // Szögirány ellenőrzése (delta: + = CW, - = CCW)
+          let deltaDeg = deg - dragLastDeg;
+          if (deltaDeg > 180) deltaDeg -= 360;
+          else if (deltaDeg < -180) deltaDeg += 360;
+
+          // Max 45° per event – csak az extrém ugrásokat szűrjük
+          deltaDeg = Math.max(-45, Math.min(45, deltaDeg));
+
+          // Tört másodperces számítás – sima ív mozgás
+          const deltaSec = (deltaDeg / 360) * totalSec;
+          dragFloatTime = Math.max(
+            1,
+            Math.min(totalSec, dragFloatTime + deltaSec),
+          );
+          dragLastDeg = deg;
+          timeLeft = Math.round(dragFloatTime);
+          renderClock();
+        });
+
+        clockWrap.addEventListener("pointerup", (e) => {
+          dragReady = false;
+          if (dragActive) {
+            dragActive = false;
+            renderClock();
+            updateUI();
+            return;
+          }
+          if (pointerMoved && Date.now() - pointerDownTime > 300) return;
+
+          const rect = clockWrap.getBoundingClientRect();
+          const sz = getClockSize();
+          const r = sz / 2 - STROKE_W - KNOB_R - 2;
+          const cxS = rect.left + sz / 2,
+            cyS = rect.top + sz / 2;
+          if (Math.hypot(e.clientX - cxS, e.clientY - cyS) > r + STROKE_W / 2)
+            return;
+
+          if (state === "running") stopTimer();
+          else if (state === "idle" || state === "paused") {
+            unlockTTS();
+            startTimer();
+          }
+        });
+
+        // ── Timer (drift-compensated via performance.now()) ──
+        function startTimer() {
+          if (totalSec < 1) return;
+          if (state === "idle") {
+            lastSpoken = -1;
+          }
+          state = "running";
+          timerStartAt = performance.now();
+          timerStartLeft = timeLeft;
+          scheduleNextTick();
+          updateUI();
+        }
+
+        function scheduleNextTick() {
+          if (state !== "running") return;
+          const msElapsed = performance.now() - timerStartAt;
+          const msToNext = 1000 - (msElapsed % 1000);
+          tickTimer = setTimeout(tick, Math.max(10, msToNext));
+        }
+
+        function tick() {
+          if (state !== "running") return;
+          const secElapsed = Math.floor(
+            (performance.now() - timerStartAt) / 1000,
+          );
+          const newLeft = Math.max(0, timerStartLeft - secElapsed);
+
+          // Speak any skipped countdown values (e.g. after device wake-up)
+          for (let t = timeLeft - 1; t >= newLeft && t >= 0; t--) {
+            if (t <= 10) speak(t);
+          }
+          timeLeft = newLeft;
+
+          if (timeLeft <= 0) {
+            timeLeft = 0;
+            state = "finished";
+            playBeep();
+            vibrate();
+            renderClock();
+            updateUI();
+            finishTimer = setTimeout(resetToIdle, 5000);
+            return;
+          }
+          renderClock();
+          updateUI();
+          scheduleNextTick();
+        }
+
+        function stopTimer() {
+          clearTimeout(tickTimer);
+          tickTimer = null;
+          state = "paused";
+          updateUI();
+        }
+
+        function clearTimers() {
+          clearTimeout(tickTimer);
+          clearTimeout(finishTimer);
+          tickTimer = null;
+          finishTimer = null;
+        }
+
+        function resetToIdleState() {
+          clearTimers();
+          state = "idle";
+          lastSpoken = -1;
+        }
+
+        function resetToIdle() {
+          resetToIdleState();
+          timeLeft = totalSec;
+          renderClock();
+          updateUI();
+        }
+
+        // ── Visibility change (sleep/wake sync) ──
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible" && state === "running") {
+            clearTimeout(tickTimer);
+            tickTimer = null;
+            tick(); // Re-sync immediately on wake
+          }
+        });
+
+        // ── Audio beep (Web Audio API) ──
+        function playBeep() {
+          try {
+            const ctx = new (
+              window.AudioContext || window.webkitAudioContext
+            )();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(
+              440,
+              ctx.currentTime + 0.6,
+            );
+            gain.gain.setValueAtTime(0.5, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(
+              0.001,
+              ctx.currentTime + 0.8,
+            );
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.8);
+            setTimeout(() => ctx.close(), 1500);
+          } catch (e) {}
+        }
+
+        // ── Vibration (mobile) ──
+        function vibrate() {
+          try {
+            if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+          } catch (e) {}
+        }
+
+        // ── TTS ──
+        function unlockTTS() {
+          if (ttsUnlocked) return;
+          const u = new SpeechSynthesisUtterance("\u200b");
+          u.volume = 0;
+          u.lang = "hu-HU";
+          speechSynthesis.speak(u);
+          ttsUnlocked = true;
+        }
+        function findHuVoice() {
+          return (
+            speechSynthesis
+              .getVoices()
+              .find((v) => v.lang && v.lang.startsWith("hu")) || null
+          );
+        }
+        speechSynthesis.addEventListener("voiceschanged", () => {
+          preferredVoice = findHuVoice();
+        });
+        preferredVoice = findHuVoice();
+
+        const HU = {
+          10: "tíz",
+          9: "kilenc",
+          8: "nyolc",
+          7: "hét",
+          6: "hat",
+          5: "öt",
+          4: "négy",
+          3: "három",
+          2: "kettő",
+          1: "egy",
+          0: "go go go",
         };
-        this.animFrame = requestAnimationFrame(animate);
-      } else {
-        this.offset = target; this.value = val; this._renderItems();
-      }
-    }
-  }
+        function speak(n) {
+          if (lastSpoken === n) return;
+          lastSpoken = n;
+          const w = HU[n];
+          if (!w) return;
+          speechSynthesis.cancel();
+          const u = new SpeechSynthesisUtterance(w);
+          u.lang = "hu-HU";
+          if (preferredVoice) u.voice = preferredVoice;
+          if (n === 0) u.rate = 0.85;
+          speechSynthesis.speak(u);
+        }
 
-  // ── Create drums ──
-  minDrum = new Drum(drumMinEl, 61, (val) => {
-    customMin = val; applyDrumValues();
-  }, (finalVal) => {
-    if (finalVal === 60 && customSec !== 0) {
-      customSec = 0; if (secDrum) secDrum.scrollToValue(0, true); applyDrumValues();
-    }
-    updateUI();
-  });
-  secDrum = new Drum(drumSecEl, 60, (val) => {
-    customSec = val; applyDrumValues();
-  });
+        // ── UI ──
+        function updateUI() {
+          switch (state) {
+            case "idle":
+              if (timeLeft < totalSec) {
+                btnStop.style.visibility = "visible";
+                btnStop.textContent = "↺ Reset";
+                btnStop.setAttribute("aria-label", "Visszaállítás");
+              } else {
+                btnStop.style.visibility = "hidden";
+                btnStop.textContent = "⏹ Stop";
+                btnStop.setAttribute("aria-label", "Stop");
+              }
+              btnStart.textContent = "▶ Indít";
+              btnStart.disabled = false;
+              btnStart.setAttribute("aria-label", "Indítás");
+              break;
+            case "running":
+              btnStop.style.visibility = "visible";
+              btnStop.textContent = "⏹ Stop";
+              btnStop.setAttribute("aria-label", "Megállítás");
+              btnStart.textContent = "▶ Indít";
+              btnStart.disabled = true;
+              btnStart.setAttribute("aria-label", "Indítás");
+              break;
+            case "paused":
+              btnStop.style.visibility = "visible";
+              btnStop.textContent = "↺ Reset";
+              btnStop.setAttribute("aria-label", "Visszaállítás");
+              btnStart.textContent = "▶ Folytat";
+              btnStart.disabled = false;
+              btnStart.setAttribute("aria-label", "Folytatás");
+              break;
+            case "finished":
+              btnStop.style.visibility = "visible";
+              btnStop.textContent = "↺ Reset";
+              btnStop.setAttribute("aria-label", "Visszaállítás");
+              btnStart.textContent = "▶ Indít";
+              btnStart.disabled = true;
+              btnStart.setAttribute("aria-label", "Indítás");
+              break;
+          }
+          renderPresets();
 
-  function tryInitDrums() {
-    if (minDrum) minDrum.scrollToValue(customMin, false);
-    if (secDrum) secDrum.scrollToValue(customSec, false);
-  }
+          if (pdWrap) pdWrap.classList.toggle("locked", state === "running");
 
-  function applyDrumValues() {
-    if (state === "paused" || state === "finished") {
-      resetToIdleState();
-    }
-    if (state !== "idle") return;
-    let sec = customMin * 60 + customSec;
-    sec = Math.max(1, Math.min(3600, sec));
-    totalSec = sec; timeLeft = sec;
-    savePreset();
-    updateUI();
-  }
+          const drumLocked = state === "running";
+          drumMinEl.classList.toggle("locked", drumLocked);
+          drumSecEl.classList.toggle("locked", drumLocked || customMin === 60);
 
-  // ── Swatch click handlers ──
-  if (swatchPurple) swatchPurple.addEventListener("click", () => applyPalette("purple"));
-  if (swatchGreen) swatchGreen.addEventListener("click", () => applyPalette("green"));
+          // Update ARIA values on drum spinbuttons
+          drumMinEl.setAttribute("aria-valuenow", customMin);
+          drumSecEl.setAttribute("aria-valuenow", customSec);
 
-  // ── Default gomb ──
-  document.getElementById("default-btn").addEventListener("click", () => {
-    const overlay = document.createElement("div");
-    overlay.className = "confirm-overlay";
-    overlay.innerHTML = `<div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-msg">
+          renderClock();
+        }
+
+        // ── Buttons ──
+        btnStop.addEventListener("click", () => {
+          if (state === "running") stopTimer();
+          else resetToIdle();
+        });
+        btnStart.addEventListener("click", () => {
+          if (state === "idle" || state === "paused") {
+            unlockTTS();
+            startTimer();
+          }
+        });
+
+        // ── Quick duration ──
+        function setDuration(sec) {
+          if (state === "running") return;
+          if (state === "paused" || state === "finished") {
+            resetToIdleState();
+          }
+          totalSec = sec;
+          timeLeft = sec;
+          customMin = Math.floor(sec / 60);
+          customSec = sec % 60;
+          if (minDrum) minDrum.scrollToValue(customMin, true);
+          if (secDrum) secDrum.scrollToValue(customSec, true);
+          savePreset();
+          updateUI();
+        }
+
+        // ── Drum ──
+        class Drum {
+          constructor(el, count, onChange, onSettled) {
+            this.el = el;
+            this.count = count;
+            this.onChange = onChange;
+            this.onSettled = onSettled || null;
+            this.totalItems = count * DRUM_REPS;
+            this.offset = 0;
+            this.value = 0;
+            this.velocity = 0;
+            this.animFrame = null;
+            this.isDragging = false;
+            this.lastY = 0;
+            this.lastTime = 0;
+            this.build();
+            this.bind();
+            this.scrollToValue(0, false); // Kezdeti renderelés garantálása
+          }
+
+          _offsetForIndex(idx) {
+            return SEL_OFFSET_BASE - idx * ITEM_H;
+          }
+          _indexFromOffset() {
+            return Math.round((SEL_OFFSET_BASE - this.offset) / ITEM_H);
+          }
+
+          build() {
+            this.el.innerHTML = "";
+            const sel = document.createElement("div");
+            sel.className = "drum-sel";
+            this.el.appendChild(sel);
+            this.track = document.createElement("div");
+            this.track.className = "drum-track";
+            for (let i = 0; i < this.totalItems; i++) {
+              const d = document.createElement("div");
+              d.className = "drum-item";
+              d.textContent = String(i % this.count).padStart(2, "0");
+              this.track.appendChild(d);
+            }
+            this.el.appendChild(this.track);
+            const ft = document.createElement("div");
+            ft.className = "drum-fade-top";
+            const fb = document.createElement("div");
+            fb.className = "drum-fade-bottom";
+            this.el.appendChild(ft);
+            this.el.appendChild(fb);
+          }
+
+          bind() {
+            this.el.addEventListener("pointerdown", (e) => this.onDown(e));
+            this.el.addEventListener("pointermove", (e) => this.onMove(e));
+            this.el.addEventListener("pointerup", () => this.onUp());
+            this.el.addEventListener("pointercancel", () => this.onUp());
+          }
+
+          onDown(e) {
+            if (state === "running") return;
+            e.preventDefault();
+            this.el.setPointerCapture(e.pointerId);
+            this.isDragging = true;
+            this.lastY = e.clientY;
+            this.lastTime = Date.now();
+            this.velocity = 0;
+            if (this.animFrame) {
+              cancelAnimationFrame(this.animFrame);
+              this.animFrame = null;
+            }
+          }
+
+          onMove(e) {
+            if (!this.isDragging) return;
+            e.preventDefault();
+            const now = Date.now();
+            const dy = e.clientY - this.lastY;
+            const dt = now - this.lastTime;
+            if (dt > 0) this.velocity = dy / dt;
+            this.lastY = e.clientY;
+            this.lastTime = now;
+            this.offset += dy;
+            this._normalize();
+            this._renderItems();
+            this._emitValue();
+          }
+
+          onUp() {
+            if (!this.isDragging) return;
+            this.isDragging = false;
+            this._startInertia();
+          }
+
+          _normalize() {
+            const oneRepH = this.count * ITEM_H;
+            const idx = this._indexFromOffset();
+            if (idx < this.count) this.offset -= oneRepH;
+            else if (idx >= this.totalItems - this.count)
+              this.offset += oneRepH;
+          }
+
+          _startInertia() {
+            let vel = this.velocity * 80;
+            const step = () => {
+              vel *= FRICTION;
+              if (Math.abs(vel) < MIN_VEL) {
+                this._snapNearest();
+                return;
+              }
+              this.offset += vel;
+              this._normalize();
+              this._renderItems();
+              this._emitValue();
+              this.animFrame = requestAnimationFrame(step);
+            };
+            this.animFrame = requestAnimationFrame(step);
+          }
+
+          _snapNearest() {
+            const idx = this._indexFromOffset();
+            const target = this._offsetForIndex(idx);
+            const animate = () => {
+              const delta = target - this.offset;
+              if (Math.abs(delta) < SNAP_THRESH) {
+                this.offset = target;
+                this._renderItems();
+                this._emitValue();
+                if (this.onSettled) this.onSettled(this.value);
+                return;
+              }
+              this.offset += delta * SNAP_LERP;
+              this._renderItems();
+              this.animFrame = requestAnimationFrame(animate);
+            };
+            this.animFrame = requestAnimationFrame(animate);
+          }
+
+          _emitValue() {
+            const idx = this._indexFromOffset();
+            const val = ((idx % this.count) + this.count) % this.count;
+            if (val !== this.value) {
+              this.value = val;
+              this.onChange(val);
+            }
+          }
+
+          _renderItems() {
+            this.track.style.transform = `translateY(${this.offset}px)`;
+            const ch = this.track.children;
+            for (let i = 0; i < ch.length; i++) {
+              const itemCY = this.offset + i * ITEM_H + ITEM_H / 2;
+              const slots = Math.abs(itemCY - SEL_CENTER) / ITEM_H;
+              let op, sc;
+              if (slots < 0.5) {
+                op = 1;
+                sc = 1.18;
+              } else if (slots < 1.5) {
+                op = 0.55;
+                sc = 1;
+              } else if (slots < 2.5) {
+                op = 0.22;
+                sc = 1;
+              } else {
+                op = 0.07;
+                sc = 1;
+              }
+              ch[i].style.opacity = op;
+              ch[i].style.transform = `scale(${sc})`;
+            }
+          }
+
+          scrollToValue(val, animated) {
+            if (this.animFrame) {
+              cancelAnimationFrame(this.animFrame);
+              this.animFrame = null;
+            }
+            const midRep = Math.floor(DRUM_REPS / 2);
+            const idx = midRep * this.count + val;
+            const target = this._offsetForIndex(idx);
+            if (animated) {
+              const animate = () => {
+                const delta = target - this.offset;
+                if (Math.abs(delta) < SNAP_THRESH) {
+                  this.offset = target;
+                  this.value = val;
+                  this._renderItems();
+                  return;
+                }
+                this.offset += delta * SNAP_LERP;
+                this._renderItems();
+                this.animFrame = requestAnimationFrame(animate);
+              };
+              this.animFrame = requestAnimationFrame(animate);
+            } else {
+              this.offset = target;
+              this.value = val;
+              this._renderItems();
+            }
+          }
+        }
+
+        // ── Create drums ──
+        minDrum = new Drum(
+          drumMinEl,
+          61,
+          (val) => {
+            customMin = val;
+            applyDrumValues();
+          },
+          (finalVal) => {
+            if (finalVal === 60 && customSec !== 0) {
+              customSec = 0;
+              if (secDrum) secDrum.scrollToValue(0, true);
+              applyDrumValues();
+            }
+            updateUI();
+          },
+        );
+        secDrum = new Drum(drumSecEl, 60, (val) => {
+          customSec = val;
+          applyDrumValues();
+        });
+
+        function tryInitDrums() {
+          if (minDrum) minDrum.scrollToValue(customMin, false);
+          if (secDrum) secDrum.scrollToValue(customSec, false);
+        }
+
+        function applyDrumValues() {
+          if (state === "paused" || state === "finished") {
+            resetToIdleState();
+          }
+          if (state !== "idle") return;
+          let sec = customMin * 60 + customSec;
+          sec = Math.max(1, Math.min(3600, sec));
+          totalSec = sec;
+          timeLeft = sec;
+          savePreset();
+          updateUI();
+        }
+
+        // ── Swatch click handlers ──
+        if (swatchPurple)
+          swatchPurple.addEventListener("click", () => applyPalette("purple"));
+        if (swatchGreen)
+          swatchGreen.addEventListener("click", () => applyPalette("green"));
+
+        // ── Default gomb ──
+        document.getElementById("default-btn").addEventListener("click", () => {
+          const overlay = document.createElement("div");
+          overlay.className = "confirm-overlay";
+          overlay.innerHTML = `<div class="confirm-box" role="dialog" aria-modal="true" aria-labelledby="confirm-msg">
       <p id="confirm-msg">Visszaállítod az alapértelmezett beállításokat?</p>
       <div class="confirm-btns">
         <button class="confirm-yes" aria-label="Igen, alapértelmezések visszaállítása">Igen</button>
         <button class="confirm-no" aria-label="Nem, mégse">Nem</button>
       </div>
     </div>`;
-    document.body.appendChild(overlay);
-    overlay.querySelector(".confirm-no").addEventListener("click", () => overlay.remove());
-    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
-    overlay.querySelector(".confirm-yes").addEventListener("click", () => {
-      overlay.remove();
-      // Törli az összes mentett beállítást
-      localStorage.removeItem("stopper_min");
-      localStorage.removeItem("stopper_sec");
-      localStorage.removeItem("stopper_presets");
-      localStorage.removeItem("stopper_theme");
-      localStorage.removeItem("stopper_palette");
-      // Visszaállítás alapértelmezettre
-      customMin = 1; customSec = 0;
-      totalSec = 60; timeLeft = 60;
-      presets = Array(10).fill(null);
-      presets[0] = { min: 1, sec: 0 };
-      presets[1] = { min: 1, sec: 30 };
-      presetCursorIdx = 0;
-      setTheme(false);
-      applyPalette("purple");
-      minDrum.scrollToValue(customMin, true);
-      secDrum.scrollToValue(customSec, true);
-      renderPresets();
-      updateUI();
-    });
-  });
-
-  // ── Init ──
-  if (localStorage.getItem("stopper_theme") === "dark") isDark = true;
-
-  const savedPalette = localStorage.getItem("stopper_palette");
-  if (savedPalette === "purple" || savedPalette === "green") currentPalette = savedPalette;
-
-  loadPreset();
-  loadPresets();
-
-  const initSec = Math.max(1, Math.min(3600, customMin * 60 + customSec));
-  totalSec = initSec; timeLeft = initSec;
-
-  minDrum.scrollToValue(customMin, false);
-  secDrum.scrollToValue(customSec, false);
-  setTheme(isDark);
-  initPresetUI();
-  updateUI();
-
-  // Clock újrarenderelés méretre
-  let resizeRaf = null;
-  function onResize() {
-    if (resizeRaf) return;
-    resizeRaf = requestAnimationFrame(() => { resizeRaf = null; renderClock(); });
-  }
-  new ResizeObserver(onResize).observe(clockArea);
-
-  // ── Service Worker registration ──
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("sw.js").then(reg => {
-      // Azonnal frissítés keresése
-      reg.update().catch(() => {});
-      // Új SW detektálása
-      reg.addEventListener("updatefound", () => {
-        const nw = reg.installing;
-        if (nw) nw.addEventListener("statechange", () => {
-          if (nw.state === "activated") window.location.reload();
+          document.body.appendChild(overlay);
+          overlay
+            .querySelector(".confirm-no")
+            .addEventListener("click", () => overlay.remove());
+          overlay.addEventListener("click", (e) => {
+            if (e.target === overlay) overlay.remove();
+          });
+          overlay
+            .querySelector(".confirm-yes")
+            .addEventListener("click", () => {
+              overlay.remove();
+              // Törli az összes mentett beállítást
+              localStorage.removeItem("stopper_min");
+              localStorage.removeItem("stopper_sec");
+              localStorage.removeItem("stopper_presets");
+              localStorage.removeItem("stopper_theme");
+              localStorage.removeItem("stopper_palette");
+              // Visszaállítás alapértelmezettre
+              customMin = 1;
+              customSec = 0;
+              totalSec = 60;
+              timeLeft = 60;
+              presets = Array(10).fill(null);
+              presets[0] = { min: 1, sec: 0 };
+              presets[1] = { min: 1, sec: 30 };
+              presetCursorIdx = 0;
+              setTheme(false);
+              applyPalette("purple");
+              minDrum.scrollToValue(customMin, true);
+              secDrum.scrollToValue(customSec, true);
+              renderPresets();
+              updateUI();
+            });
         });
-      });
-    }).catch(() => {});
-    navigator.serviceWorker.addEventListener("message", e => {
-      if (e.data && e.data.type === "SW_UPDATED") window.location.reload();
-    });
-    // Safari fix: controllerchange → reload
-    navigator.serviceWorker.addEventListener("controllerchange", () => {
-      window.location.reload();
-    });
-  }
-})();
-</script>
 
-</body>
+        // ── Init ──
+        if (localStorage.getItem("stopper_theme") === "dark") isDark = true;
+
+        const savedPalette = localStorage.getItem("stopper_palette");
+        if (savedPalette === "purple" || savedPalette === "green")
+          currentPalette = savedPalette;
+
+        loadPreset();
+        loadPresets();
+
+        const initSec = Math.max(1, Math.min(3600, customMin * 60 + customSec));
+        totalSec = initSec;
+        timeLeft = initSec;
+
+        minDrum.scrollToValue(customMin, false);
+        secDrum.scrollToValue(customSec, false);
+        setTheme(isDark);
+        initPresetUI();
+        updateUI();
+
+        // Clock újrarenderelés méretre
+        let resizeRaf = null;
+        function onResize() {
+          if (resizeRaf) return;
+          resizeRaf = requestAnimationFrame(() => {
+            resizeRaf = null;
+            renderClock();
+          });
+        }
+        new ResizeObserver(onResize).observe(clockArea);
+
+        // ── Service Worker registration ──
+        if ("serviceWorker" in navigator) {
+          navigator.serviceWorker
+            .register("sw.js")
+            .then((reg) => {
+              // Azonnal frissítés keresése
+              reg.update().catch(() => {});
+              // Új SW detektálása
+              reg.addEventListener("updatefound", () => {
+                const nw = reg.installing;
+                if (nw)
+                  nw.addEventListener("statechange", () => {
+                    if (nw.state === "activated") window.location.reload();
+                  });
+              });
+            })
+            .catch(() => {});
+          navigator.serviceWorker.addEventListener("message", (e) => {
+            if (e.data && e.data.type === "SW_UPDATED")
+              window.location.reload();
+          });
+          // Safari fix: controllerchange → reload
+          navigator.serviceWorker.addEventListener("controllerchange", () => {
+            window.location.reload();
+          });
+        }
+      })();
+    </script>
+  </body>
 </html>
