@@ -1,6 +1,7 @@
+# flake8: noqa: E501
 import re
 
-with open('index.html', 'r', encoding='utf-8') as f:
+with open("index.html", "r", encoding="utf-8") as f:
     content = f.read()
 
 replacement = """  function loadPresets() {
@@ -24,7 +25,11 @@ replacement = """  function loadPresets() {
       }
     } catch (e) {}"""
 
-content = re.sub(r'  function loadPresets\(\) \{\n    try \{\n      const saved = JSON\.parse\(localStorage\.getItem\("stopper_presets"\)\);\n      if \(Array\.isArray\(saved\) && saved\.length === 10\) \{\n        presets = saved;\n        return;\n      \}\n    \} catch \(e\) \{\}', replacement, content)
+content = re.sub(
+    r'  function loadPresets\(\) \{\n    try \{\n      const saved = JSON\.parse\(localStorage\.getItem\("stopper_presets"\)\);\n      if \(Array\.isArray\(saved\) && saved\.length === 10\) \{\n        presets = saved;\n        return;\n      \}\n    \} catch \(e\) \{\}',
+    replacement,
+    content,
+)
 
-with open('index.html', 'w', encoding='utf-8') as f:
+with open("index.html", "w", encoding="utf-8") as f:
     f.write(content)

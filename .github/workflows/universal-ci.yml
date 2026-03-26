@@ -1,0 +1,35 @@
+---
+name: Universal CI Linter
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  build:
+    name: Lint Code Base
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      packages: read
+      # Szükséges a Jules-nak a PR-ok javításához
+      statuses: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          # A Super-Linternek látnia kell a teljes előzményt az elemzéshez
+          fetch-depth: 0
+
+      - name:
+          Lint Code Base
+          # Ez az egyetlen lépés elvégzi az összes nyelv ellenőrzését (Kotlin, Python, HTML, stb.)
+        uses: github/super-linter/slim@v7
+        env:
+          VALIDATE_ALL_CODEBASE: true
+          DEFAULT_BRANCH: main
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
