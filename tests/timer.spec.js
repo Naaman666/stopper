@@ -1,7 +1,7 @@
-const { test, expect } = require('@playwright/test');
-const path = require('path');
+const { test, expect } = require("@playwright/test");
+const path = require("path");
 
-test.describe('Timer functionality', () => {
+test.describe("Timer functionality", () => {
   let page;
 
   test.beforeEach(async ({ browser }) => {
@@ -13,16 +13,18 @@ test.describe('Timer functionality', () => {
     await page.close();
   });
 
-  test('should initialize timer properly', async () => {
-    const btnStart = page.locator('#btnStart');
-    const btnStop = page.locator('#btnStop');
+  test("should initialize timer properly", async () => {
+    const btnStart = page.locator("#btnStart");
+    const btnStop = page.locator("#btnStop");
 
     // Wait until start button is visible
     await expect(btnStart).toBeVisible();
     await expect(btnStart).not.toBeDisabled();
 
     // Evaluate via DOM logic instead of pure selector, just to make sure logic is sound
-    const isHidden = await btnStop.evaluate(el => window.getComputedStyle(el).visibility === 'hidden');
+    const isHidden = await btnStop.evaluate(
+      (el) => window.getComputedStyle(el).visibility === "hidden",
+    );
     expect(isHidden).toBe(true);
 
     // Simulate mouse interaction to swipe/spin drum
@@ -33,21 +35,25 @@ test.describe('Timer functionality', () => {
     await expect(btnStart).toBeDisabled();
 
     // Stop should be visible
-    const newStopVisibility = await btnStop.evaluate(el => window.getComputedStyle(el).visibility);
-    expect(newStopVisibility).toBe('visible');
+    const newStopVisibility = await btnStop.evaluate(
+      (el) => window.getComputedStyle(el).visibility,
+    );
+    expect(newStopVisibility).toBe("visible");
     await expect(btnStop).toHaveText(/Stop/);
   });
 
-  test('should stop timer properly', async () => {
-    const btnStart = page.locator('#btnStart');
-    const btnStop = page.locator('#btnStop');
+  test("should stop timer properly", async () => {
+    const btnStart = page.locator("#btnStart");
+    const btnStop = page.locator("#btnStop");
 
     await expect(btnStart).toBeVisible();
     await btnStart.click(); // Start it
     await expect(btnStart).toBeDisabled();
 
-    const newStopVisibility = await btnStop.evaluate(el => window.getComputedStyle(el).visibility);
-    expect(newStopVisibility).toBe('visible');
+    const newStopVisibility = await btnStop.evaluate(
+      (el) => window.getComputedStyle(el).visibility,
+    );
+    expect(newStopVisibility).toBe("visible");
 
     await btnStop.click(); // Stop it
 
