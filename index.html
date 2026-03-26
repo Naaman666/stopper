@@ -261,6 +261,18 @@ html, body {
   let lastSpoken = -1;
   let tickTimer = null;
   let finishTimer = null;
+
+  function clearTimers() {
+    clearTimeout(tickTimer); clearTimeout(finishTimer);
+    tickTimer = null; finishTimer = null;
+  }
+
+  function resetToIdleState() {
+    clearTimers();
+    state = "idle";
+    lastSpoken = -1;
+  }
+
   let ttsUnlocked = false;
   let preferredVoice = null;
   let isDark = false;
@@ -790,9 +802,8 @@ html, body {
   }
 
   function resetToIdle() {
-    clearTimeout(tickTimer); clearTimeout(finishTimer);
-    tickTimer = null; finishTimer = null;
-    state = "idle"; timeLeft = totalSec; lastSpoken = -1;
+    resetToIdleState();
+    timeLeft = totalSec;
     renderClock(); updateUI();
   }
 
@@ -909,9 +920,7 @@ html, body {
   function setDuration(sec) {
     if (state === "running") return;
     if (state === "paused" || state === "finished") {
-      clearTimeout(tickTimer); clearTimeout(finishTimer);
-      tickTimer = null; finishTimer = null;
-      state = "idle"; lastSpoken = -1;
+      resetToIdleState();
     }
     totalSec = sec; timeLeft = sec;
     customMin = Math.floor(sec / 60); customSec = sec % 60;
@@ -1101,9 +1110,7 @@ html, body {
 
   function applyDrumValues() {
     if (state === "paused" || state === "finished") {
-      clearTimeout(tickTimer); clearTimeout(finishTimer);
-      tickTimer = null; finishTimer = null;
-      state = "idle"; lastSpoken = -1;
+      resetToIdleState();
     }
     if (state !== "idle") return;
     let sec = customMin * 60 + customSec;
