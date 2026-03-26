@@ -333,6 +333,7 @@ html, body {
 
   const themeBtn = document.getElementById("themeBtn");
   const clockWrap = document.getElementById("clock-wrap");
+  const clockArea = document.querySelector(".clock-area");
   const btnStop = document.getElementById("btnStop");
   const btnStart = document.getElementById("btnStart");
   const drumMinEl = document.getElementById("drumMin");
@@ -588,10 +589,9 @@ html, body {
 
   // ── Clock ──
   function getClockSize() {
-    const area = document.querySelector(".clock-area");
-    if (area) {
-      const h = area.clientHeight;
-      const w = area.clientWidth;
+    if (clockArea) {
+      const h = clockArea.clientHeight;
+      const w = clockArea.clientWidth;
       if (h > 40 && w > 40) return Math.min(w, h) - 4;
     }
     const vp = window.visualViewport || { width: window.innerWidth, height: window.innerHeight };
@@ -1174,7 +1174,6 @@ html, body {
   updateUI();
 
   // Clock újrarenderelés méretre
-  const clockArea = document.querySelector(".clock-area");
   let resizeRaf = null;
   function onResize() {
     if (resizeRaf) return;
