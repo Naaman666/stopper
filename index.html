@@ -371,16 +371,28 @@ html, body {
   function loadPreset() {
     const m = parseInt(localStorage.getItem("stopper_min"), 10);
     const s = parseInt(localStorage.getItem("stopper_sec"), 10);
-    if (!isNaN(m) && m >= 0 && m <= 60) customMin = m;
-    if (!isNaN(s) && s >= 0 && s < 60) customSec = s;
+    if (!isNaN(m) && Number.isInteger(m) && m >= 0 && m <= 60) customMin = m;
+    if (!isNaN(s) && Number.isInteger(s) && s >= 0 && s < 60) customSec = s;
   }
 
   function loadPresets() {
     try {
       const saved = JSON.parse(localStorage.getItem("stopper_presets"));
       if (Array.isArray(saved) && saved.length === 10) {
-        presets = saved;
-        return;
+        // Validate each item: it must be either null, or an object with valid min/sec numbers
+        const isValid = saved.every(p => {
+          if (p === null) return true;
+          if (typeof p !== 'object' || Array.isArray(p)) return false;
+          const { min, sec } = p;
+          return Number.isInteger(min) && min >= 0 && min <= 60 &&
+                 Number.isInteger(sec) && sec >= 0 && sec < 60;
+        });
+        if (isValid) {
+          presets = saved;
+          return;
+        } else {
+          console.warn("Érvénytelen időzítő beállítások (presets) formátum a localStorage-ben.");
+        }
       }
     } catch (e) {}
     presets[0] = { min: 1, sec: 0 };
