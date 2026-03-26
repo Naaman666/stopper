@@ -376,11 +376,13 @@ html, body {
   }
 
   function loadPresets() {
-    const saved = JSON.parse(localStorage.getItem("stopper_presets"));
-    if (Array.isArray(saved) && saved.length === 10) {
-      presets = saved;
-      return;
-    }
+    try {
+      const saved = JSON.parse(localStorage.getItem("stopper_presets"));
+      if (Array.isArray(saved) && saved.length === 10) {
+        presets = saved;
+        return;
+      }
+    } catch (e) {}
     presets[0] = { min: 1, sec: 0 };
     presets[1] = { min: 1, sec: 30 };
   }
