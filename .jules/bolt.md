@@ -1,0 +1,3 @@
+## 2025-02-14 - Túl sok szinkron renderelés a drag eseménynél
+**Learning:** A körív húzása (drag) során a `pointermove` eseményben folyamatosan szinkron módon hívtuk a `renderClock()` függvényt, ami az egész SVG DOM újraépítését eredményezte `innerHTML`-lel. Ez extrém CPU és elrendezés (layout) túlterhelést okozott, ezért a mutató "lemaradt".
+**Action:** Csomagoljuk be a `renderClock()`-ot, vagy legalábbis az eseménykezelő renderelését egy `requestAnimationFrame` (rAF) hívásba, hogy megszüntessük a frame-duplikációt (ugyanabban a megjelenítési frissítésben többször feleslegesen újrarajzolni az elemet), ami sokkal simább 60 FPS húzást eredményez.

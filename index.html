@@ -666,6 +666,7 @@ html, body {
   let pointerDownTime = 0;
   let pointerMoved = false;
   let dragLastDeg = 0;
+  let dragRaf = null;
 
   clockWrap.addEventListener("pointerdown", (e) => {
     e.preventDefault();
@@ -731,13 +732,18 @@ html, body {
     dragFloatTime = Math.max(1, Math.min(totalSec, dragFloatTime + deltaSec));
     dragLastDeg = deg;
     timeLeft = Math.round(dragFloatTime);
-    renderClock();
+    if (dragRaf) return;
+    dragRaf = requestAnimationFrame(() => {
+      dragRaf = null;
+      renderClock();
+    });
   });
 
   clockWrap.addEventListener("pointerup", (e) => {
     dragReady = false;
     if (dragActive) {
       dragActive = false;
+      if (dragRaf) { cancelAnimationFrame(dragRaf); dragRaf = null; }
       renderClock();
       updateUI();
       return;
