@@ -305,13 +305,16 @@ html, body {
     for (const [k, v] of Object.entries(vars)) root.style.setProperty(k, v);
     ccNormal = vars["--arc-normal"];
     // Update theme-color meta
-    const tc = document.querySelector('meta[name="theme-color"]');
-    if (tc) tc.setAttribute("content", PALETTES[name].light["--arc-normal"]);
+    if (themeColorMeta) themeColorMeta.setAttribute("content", PALETTES[name].light["--arc-normal"]);
     // Update swatch active state
-    document.getElementById("swatchPurple").classList.toggle("active", name === "purple");
-    document.getElementById("swatchPurple").setAttribute("aria-pressed", name === "purple" ? "true" : "false");
-    document.getElementById("swatchGreen").classList.toggle("active", name === "green");
-    document.getElementById("swatchGreen").setAttribute("aria-pressed", name === "green" ? "true" : "false");
+    if (swatchPurple) {
+      swatchPurple.classList.toggle("active", name === "purple");
+      swatchPurple.setAttribute("aria-pressed", name === "purple" ? "true" : "false");
+    }
+    if (swatchGreen) {
+      swatchGreen.classList.toggle("active", name === "green");
+      swatchGreen.setAttribute("aria-pressed", name === "green" ? "true" : "false");
+    }
     localStorage.setItem("stopper_palette", name);
     renderClock();
   }
@@ -332,6 +335,9 @@ html, body {
   const SEL_OFFSET_BASE = SEL_CENTER - ITEM_H / 2; // 50
 
   const themeBtn = document.getElementById("themeBtn");
+  const swatchPurple = document.getElementById("swatchPurple");
+  const swatchGreen = document.getElementById("swatchGreen");
+  const themeColorMeta = document.querySelector('meta[name="theme-color"]');
   const clockWrap = document.getElementById("clock-wrap");
   const btnStop = document.getElementById("btnStop");
   const btnStart = document.getElementById("btnStart");
@@ -1114,8 +1120,8 @@ html, body {
   }
 
   // ── Swatch click handlers ──
-  document.getElementById("swatchPurple").addEventListener("click", () => applyPalette("purple"));
-  document.getElementById("swatchGreen").addEventListener("click", () => applyPalette("green"));
+  if (swatchPurple) swatchPurple.addEventListener("click", () => applyPalette("purple"));
+  if (swatchGreen) swatchGreen.addEventListener("click", () => applyPalette("green"));
 
   // ── Default gomb ──
   document.getElementById("defaultBtn").addEventListener("click", () => {
