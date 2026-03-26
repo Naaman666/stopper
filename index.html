@@ -1203,6 +1203,19 @@ html, body {
       window.location.reload();
     });
   }
+
+  // Expose for testing
+  window.__test = {
+    get state() { return state; },
+    get totalSec() { return totalSec; },
+    get timeLeft() { return timeLeft; },
+    get customMin() { return customMin; },
+    get customSec() { return customSec; },
+    setDuration,
+    startTimer,
+    stopTimer,
+    resetToIdle
+  };
 })();
 </script>
 
