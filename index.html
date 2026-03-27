@@ -972,10 +972,14 @@ html, body {
       this.el.innerHTML = "";
       const sel = document.createElement("div"); sel.className = "drum-sel"; this.el.appendChild(sel);
       this.track = document.createElement("div"); this.track.className = "drum-track";
+      this.items = [];
       for (let i = 0; i < this.totalItems; i++) {
         const d = document.createElement("div"); d.className = "drum-item";
         d.textContent = String(i % this.count).padStart(2, "0");
+        d.style.opacity = 0.07;
+        d.style.transform = "scale(1)";
         this.track.appendChild(d);
+        this.items.push(d);
       }
       this.el.appendChild(this.track);
       const ft = document.createElement("div"); ft.className = "drum-fade-top";
@@ -1069,8 +1073,29 @@ html, body {
 
     _renderItems() {
       this.track.style.transform = `translateY(${this.offset}px)`;
-      const ch = this.track.children;
-      for (let i = 0; i < ch.length; i++) {
+
+      const centerIdx = Math.round((SEL_CENTER - this.offset - ITEM_H / 2) / ITEM_H);
+      const startIdx = Math.max(0, centerIdx - 3);
+      const endIdx = Math.min(this.totalItems - 1, centerIdx + 3);
+
+      if (this.lastStartIdx !== undefined) {
+        for (let i = this.lastStartIdx; i < startIdx; i++) {
+          if (i >= 0 && i < this.totalItems) {
+            this.items[i].style.opacity = 0.07;
+            this.items[i].style.transform = "scale(1)";
+          }
+        }
+        for (let i = endIdx + 1; i <= this.lastEndIdx; i++) {
+          if (i >= 0 && i < this.totalItems) {
+            this.items[i].style.opacity = 0.07;
+            this.items[i].style.transform = "scale(1)";
+          }
+        }
+      }
+      this.lastStartIdx = startIdx;
+      this.lastEndIdx = endIdx;
+
+      for (let i = startIdx; i <= endIdx; i++) {
         const itemCY = this.offset + i * ITEM_H + ITEM_H / 2;
         const slots = Math.abs(itemCY - SEL_CENTER) / ITEM_H;
         let op, sc;
@@ -1078,8 +1103,8 @@ html, body {
         else if (slots < 1.5) { op = 0.55; sc = 1; }
         else if (slots < 2.5) { op = 0.22; sc = 1; }
         else { op = 0.07; sc = 1; }
-        ch[i].style.opacity = op;
-        ch[i].style.transform = `scale(${sc})`;
+        this.items[i].style.opacity = op;
+        this.items[i].style.transform = `scale(${sc})`;
       }
     }
 
