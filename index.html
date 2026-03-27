@@ -707,6 +707,8 @@ html, body {
   });
 
   clockWrap.addEventListener("pointermove", (e) => {
+    if (!dragActive && !dragReady) return; // ⚡ Bolt: Early return to prevent layout thrashing on idle hover
+
     pointerMoved = true;
     const rect = clockWrap.getBoundingClientRect();
     const sz = getClockSize();
