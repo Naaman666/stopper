@@ -607,17 +607,7 @@ html, body {
     return Math.max(80, Math.min(vp.width - 32, vp.height - 220));
   }
 
-  function renderClock() {
-    if (!clockWrap) return;
-    const sz = getClockSize();
-    const r = sz / 2 - STROKE_W - KNOB_R - 2;
-    const cx = sz / 2, cy = sz / 2;
-    const displayTime = dragActive ? dragFloatTime : timeLeft;
-    const isAlert = timeLeft <= 10 && (state !== "idle" || timeLeft < totalSec);
-    const arcColor = isAlert ? ccAlert : ccNormal;
-    const trackColor = ccTrack;
-    const frac = totalSec > 0 ? displayTime / totalSec : 0;
-
+  function createArcAndKnobSvg(frac, cx, cy, r, arcColor) {
     let arcSvg = "";
     let knobSvg = "";
 
@@ -637,15 +627,33 @@ html, body {
       knobSvg = `<circle cx="${cx}" cy="${cy - r}" r="${KNOB_R}" fill="${arcColor}"/>`;
     }
 
-    const digitSize = Math.max(14, sz * 0.21);
-    let digitText;
+    return { arcSvg, knobSvg };
+  }
+
+  function createDigitText(state, cx, cy, r, digitSize, timeLeft, arcColor) {
     if (state === "finished") {
-      digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${r * 0.38}" font-weight="800" fill="${arcColor}">GO GO GO</text>`;
+      return `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${r * 0.38}" font-weight="800" fill="${arcColor}">GO GO GO</text>`;
     } else {
       const mm = String(Math.floor(timeLeft / 60)).padStart(2, "0");
       const ss = String(timeLeft % 60).padStart(2, "0");
-      digitText = `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${digitSize}" font-weight="800" fill="${arcColor}">${mm}:${ss}</text>`;
+      return `<text x="${cx}" y="${cy}" text-anchor="middle" dominant-baseline="central" font-size="${digitSize}" font-weight="800" fill="${arcColor}">${mm}:${ss}</text>`;
     }
+  }
+
+  function renderClock() {
+    if (!clockWrap) return;
+    const sz = getClockSize();
+    const r = sz / 2 - STROKE_W - KNOB_R - 2;
+    const cx = sz / 2, cy = sz / 2;
+    const displayTime = dragActive ? dragFloatTime : timeLeft;
+    const isAlert = timeLeft <= 10 && (state !== "idle" || timeLeft < totalSec);
+    const arcColor = isAlert ? ccAlert : ccNormal;
+    const trackColor = ccTrack;
+    const frac = totalSec > 0 ? displayTime / totalSec : 0;
+
+    const { arcSvg, knobSvg } = createArcAndKnobSvg(frac, cx, cy, r, arcColor);
+    const digitSize = Math.max(14, sz * 0.21);
+    const digitText = createDigitText(state, cx, cy, r, digitSize, timeLeft, arcColor);
 
     clockWrap.innerHTML = `<svg width="${sz}" height="${sz}" viewBox="0 0 ${sz} ${sz}" aria-hidden="true">
       <circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${trackColor}" stroke-width="${STROKE_W}"/>
