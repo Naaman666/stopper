@@ -679,7 +679,8 @@
         });
 
         // ── Preset slots ──
-        let presets = Array(10).fill(null);
+        const P_COUNT = 10;
+        let presets = Array(P_COUNT).fill(null);
         let presetCursorIdx = 0;
 
         // ── localStorage ──
@@ -688,17 +689,49 @@
           localStorage.setItem("stopper_sec", customSec);
         }
 
+        function normalizeDurationParts(minValue, secValue) {
+          const min = Number.parseInt(minValue, 10);
+          const sec = Number.parseInt(secValue, 10);
+          if (
+            !Number.isInteger(min) ||
+            !Number.isInteger(sec) ||
+            min < 0 ||
+            min > 60 ||
+            sec < 0 ||
+            sec > 59
+          ) {
+            return null;
+          }
+          if (min === 60 && sec !== 0) return null;
+          return { min, sec };
+        }
+
         function loadPreset() {
-          const m = parseInt(localStorage.getItem("stopper_min"), 10);
-          const s = parseInt(localStorage.getItem("stopper_sec"), 10);
-          if (!isNaN(m) && m >= 0 && m <= 60) customMin = m;
-          if (!isNaN(s) && s >= 0 && s < 60) customSec = s;
+          const normalized = normalizeDurationParts(
+            localStorage.getItem("stopper_min"),
+            localStorage.getItem("stopper_sec"),
+          );
+          if (normalized) {
+            customMin = normalized.min;
+            customSec = normalized.sec;
+          }
+        }
+
+        function normalizePresetEntry(entry) {
+          if (!entry || typeof entry !== "object") return null;
+          return normalizeDurationParts(entry.min, entry.sec);
         }
 
         function loadPresets() {
-          const saved = JSON.parse(localStorage.getItem("stopper_presets"));
-          if (Array.isArray(saved) && saved.length === 10) {
-            presets = saved;
+          presets = Array(P_COUNT).fill(null);
+          let saved = null;
+          try {
+            saved = JSON.parse(localStorage.getItem("stopper_presets"));
+          } catch (_) {
+            saved = null;
+          }
+          if (Array.isArray(saved) && saved.length === P_COUNT) {
+            presets = saved.map(normalizePresetEntry);
             return;
           }
           presets[0] = { min: 1, sec: 0 };
@@ -713,9 +746,6 @@
           if (!p) return "–";
           return `${p.min}:${String(p.sec).padStart(2, "0")}`;
         }
-
-        const P_COUNT = 10;
-
         function renderPresets() {
           const scroll = document.getElementById("presetScroll");
           if (!scroll) return;
@@ -1470,51 +1500,70 @@
           .addEventListener("click", () => applyPalette("green"));
 
         // ── Default gomb ──
-        document.getElementById("defaultBtn").addEventListener("click", () => {
+        function buildResetConfirmOverlay() {
           const overlay = document.createElement("div");
           overlay.className = "confirm-overlay";
-          overlay.innerHTML = `<div class="confirm-box">
-      <p>Visszaállítod az alapértelmezett beállításokat?</p>
-      <div class="confirm-btns">
-        <button class="confirm-yes">Igen</button>
-        <button class="confirm-no">Nem</button>
-      </div>
-    </div>`;
+
+          const box = document.createElement("div");
+          box.className = "confirm-box";
+
+          const text = document.createElement("p");
+          text.textContent = "Visszaállítod az alapértelmezett beállításokat?";
+
+          const actions = document.createElement("div");
+          actions.className = "confirm-btns";
+
+          const yesBtn = document.createElement("button");
+          yesBtn.type = "button";
+          yesBtn.className = "confirm-yes";
+          yesBtn.textContent = "Igen";
+
+          const noBtn = document.createElement("button");
+          noBtn.type = "button";
+          noBtn.className = "confirm-no";
+          noBtn.textContent = "Nem";
+
+          actions.appendChild(yesBtn);
+          actions.appendChild(noBtn);
+          box.appendChild(text);
+          box.appendChild(actions);
+          overlay.appendChild(box);
+
+          return { overlay, yesBtn, noBtn };
+        }
+
+        document.getElementById("defaultBtn").addEventListener("click", () => {
+          const { overlay, yesBtn, noBtn } = buildResetConfirmOverlay();
           document.body.appendChild(overlay);
-          overlay
-            .querySelector(".confirm-no")
-            .addEventListener("click", () => overlay.remove());
+          noBtn.addEventListener("click", () => overlay.remove());
           overlay.addEventListener("click", (e) => {
             if (e.target === overlay) overlay.remove();
           });
-          overlay
-            .querySelector(".confirm-yes")
-            .addEventListener("click", () => {
-              overlay.remove();
-              // Törli az összes mentett beállítást
-              localStorage.removeItem("stopper_min");
-              localStorage.removeItem("stopper_sec");
-              localStorage.removeItem("stopper_presets");
-              localStorage.removeItem("stopper_theme");
-              localStorage.removeItem("stopper_palette");
-              // Visszaállítás alapértelmezettre
-              customMin = 1;
-              customSec = 0;
-              totalSec = 60;
-              timeLeft = 60;
-              presets = Array(10).fill(null);
-              presets[0] = { min: 1, sec: 0 };
-              presets[1] = { min: 1, sec: 30 };
-              presetCursorIdx = 0;
-              setTheme(false);
-              applyPalette("purple");
-              minDrum.scrollToValue(customMin, true);
-              secDrum.scrollToValue(customSec, true);
-              renderPresets();
-              updateUI();
-            });
+          yesBtn.addEventListener("click", () => {
+            overlay.remove();
+            // TĂ¶rli az Ă¶sszes mentett beĂˇllĂ­tĂˇst
+            localStorage.removeItem("stopper_min");
+            localStorage.removeItem("stopper_sec");
+            localStorage.removeItem("stopper_presets");
+            localStorage.removeItem("stopper_theme");
+            localStorage.removeItem("stopper_palette");
+            // VisszaĂˇllĂ­tĂˇs alapĂ©rtelmezettre
+            customMin = 1;
+            customSec = 0;
+            totalSec = 60;
+            timeLeft = 60;
+            presets = Array(P_COUNT).fill(null);
+            presets[0] = { min: 1, sec: 0 };
+            presets[1] = { min: 1, sec: 30 };
+            presetCursorIdx = 0;
+            setTheme(false);
+            applyPalette("purple");
+            minDrum.scrollToValue(customMin, true);
+            secDrum.scrollToValue(customSec, true);
+            renderPresets();
+            updateUI();
+          });
         });
-
         // ── Init ──
         if (localStorage.getItem("stopper_theme") === "dark") isDark = true;
 

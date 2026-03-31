@@ -1,6 +1,25 @@
 /* Stopper – Service Worker */
-const CACHE = "stopper-cache";
+const CACHE = "stopper-cache-v2";
 const FILES = ["./", "./index.html", "./manifest.json", "./icon.svg"];
+const CACHEABLE_DESTINATIONS = new Set([
+  "",
+  "document",
+  "font",
+  "image",
+  "manifest",
+  "script",
+  "style",
+]);
+
+function shouldHandleRequest(request) {
+  if (request.method !== "GET") return false;
+  const reqUrl = new URL(request.url);
+  if (reqUrl.origin !== self.location.origin) return false;
+  return (
+    request.mode === "navigate" ||
+    CACHEABLE_DESTINATIONS.has(request.destination)
+  );
+}
 
 self.addEventListener("install", e => {
   self.skipWaiting();
@@ -23,9 +42,13 @@ self.addEventListener("activate", e => {
 });
 
 self.addEventListener("fetch", e => {
+  if (!shouldHandleRequest(e.request)) {
+    return;
+  }
+
   e.respondWith(
     fetch(e.request).then(r => {
-      if (r.ok || r.type === "opaque") {
+      if (r.ok) {
         const clone = r.clone();
         caches.open(CACHE).then(c => c.put(e.request, clone));
       }
