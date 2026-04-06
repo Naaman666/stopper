@@ -2,7 +2,7 @@
 
 A minimalist countdown timer PWA — installable on mobile and desktop, works fully offline.
 
-🔗 **[Live demo](https://naaman666.github.io/Stopper)**
+🔗 **[Live demo](https://naaman666.github.io/stopper)**
 
 ---
 
@@ -57,7 +57,7 @@ The `main` branch is protected — changes go through pull requests only. Branch
 
 Letisztult visszaszámláló PWA — telepíthető mobilra és asztali gépre, teljesen offline is működik.
 
-🔗 **[Élő demo](https://naaman666.github.io/Stopper)**
+🔗 **[Élő demo](https://naaman666.github.io/stopper)**
 
 ---
 
