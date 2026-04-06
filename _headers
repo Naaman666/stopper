@@ -1,5 +1,8 @@
 /*
   Cache-Control: no-cache, must-revalidate
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: DENY
+  Referrer-Policy: strict-origin-when-cross-origin
 
 /sw.js
   Cache-Control: no-store, no-cache, must-revalidate, max-age=0
