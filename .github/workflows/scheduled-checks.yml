@@ -2,7 +2,7 @@ name: Scheduled Checks
 
 on:
   schedule:
-    - cron: '0 6 * * 1'  # Hétfőnként 06:00 UTC
+    - cron: "0 6 * * 1" # Hétfőnként 06:00 UTC
   workflow_dispatch:
 
 concurrency:
@@ -27,7 +27,7 @@ jobs:
         if: hashFiles('requirements*.txt', 'pyproject.toml') != ''
         uses: actions/setup-python@0b93645e9fea7318ecaed2b359559ac225c90a2b # v5.3.0
         with:
-          python-version: '3.12'
+          python-version: "3.12"
           cache: pip
 
       - name: 📋 Python — License compliance (pip-licenses)
@@ -57,7 +57,7 @@ jobs:
         if: hashFiles('build.gradle', 'build.gradle.kts') != ''
         uses: actions/setup-java@3a4f6e1af504e7e5a4b3e9b4a234e4e5e4f4e1af # v4.7.0
         with:
-          java-version: '21'
+          java-version: "21"
           distribution: temurin
           cache: gradle
 
@@ -90,7 +90,7 @@ jobs:
         if: hashFiles('package.json') != ''
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
-          node-version: '22'
+          node-version: "22"
 
       - name: 📋 JS — License compliance (license-checker)
         if: hashFiles('package.json') != ''
