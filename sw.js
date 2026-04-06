@@ -10,6 +10,11 @@ const CACHEABLE_DESTINATIONS = new Set([
   "script",
   "style",
 ]);
+/**
+ * Determine if request should be handled by cache.
+ * @param {Request} request
+ * @returns {boolean}
+ */
 
 function shouldHandleRequest(request) {
   if (request.method !== "GET") return false;
