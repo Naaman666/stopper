@@ -65,6 +65,18 @@ const tests = [
     expected: null,
     name: "Tests fallback condition (|| null) when getVoices returns an array with no Hungarian voice",
   },
+  {
+    input: {
+      getVoices: () => {
+        const arr = [];
+        // mock array find method to return undefined directly
+        arr.find = () => undefined;
+        return arr;
+      },
+    },
+    expected: null,
+    name: "Tests fallback condition (|| null) explicitly when Array.prototype.find returns undefined",
+  },
 ];
 
 let failedCount = 0;
