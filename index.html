@@ -692,23 +692,6 @@
           localStorage.setItem("stopper_sec", customSec);
         }
 
-        function normalizeDurationParts(minValue, secValue) {
-          const min = Number.parseInt(minValue, 10);
-          const sec = Number.parseInt(secValue, 10);
-          if (
-            !Number.isInteger(min) ||
-            !Number.isInteger(sec) ||
-            min < 0 ||
-            min > 60 ||
-            sec < 0 ||
-            sec > 59
-          ) {
-            return null;
-          }
-          if (min === 60 && sec !== 0) return null;
-          return { min, sec };
-        }
-
         function loadPreset() {
           const normalized = normalizeDurationParts(
             localStorage.getItem("stopper_min"),
@@ -718,11 +701,6 @@
             customMin = normalized.min;
             customSec = normalized.sec;
           }
-        }
-
-        function normalizePresetEntry(entry) {
-          if (!entry || typeof entry !== "object") return null;
-          return normalizeDurationParts(entry.min, entry.sec);
         }
 
         function loadPresets() {
@@ -744,7 +722,6 @@
         function savePresets() {
           localStorage.setItem("stopper_presets", JSON.stringify(presets));
         }
-
 
         function renderPresets() {
           if (!presetScrollEl) return;
