@@ -21,35 +21,35 @@ concurrency:
 
 jobs:
   lint-and-validate:
-    name: Lint & Validate
+    name: "Lint & Validate"
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
 
     steps:
-      - name: 📥 Checkout
+      - name: "📥 Checkout"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: 🟨 Setup Node.js
+      - name: "🟨 Setup Node.js"
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "22"
 
-      - name: 📦 Install linters
+      - name: "📦 Install linters"
         run: npm install -g htmlhint eslint
 
-      - name: 🧹 Lint HTML (htmlhint)
+      - name: "🧹 Lint HTML (htmlhint)"
         run: htmlhint "**/*.html" --ignore "node_modules/**"
 
-      - name: 🧹 Lint JavaScript (eslint)
+      - name: "🧹 Lint JavaScript (eslint)"
         run: eslint "**/*.js" --ignore-pattern "node_modules/**"
 
   # ════════════════════════════════════════════════════════
   # JOB 2 — Kódformázás cleanup + PR nyitás
   # ════════════════════════════════════════════════════════
   code-cleanup:
-    name: Code Cleanup & Format PR
+    name: "Code Cleanup & Format PR"
     needs: lint-and-validate
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     runs-on: ubuntu-latest
@@ -59,17 +59,17 @@ jobs:
       pull-requests: write
 
     steps:
-      - name: 📥 Checkout
+      - name: "📥 Checkout"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
-      - name: 🟨 Setup Node.js
+      - name: "🟨 Setup Node.js"
         uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
         with:
           node-version: "22"
 
-      - name: 📦 Install Prettier
+      - name: "📦 Install Prettier"
         run: npm install -g prettier
 
       - name: "🧹 Auto-fix: Prettier format"
@@ -78,12 +78,12 @@ jobs:
             --ignore-path .gitignore \
             --no-error-on-unmatched-pattern
 
-      - name: 🔍 Check for changes
+      - name: "🔍 Check for changes"
         id: changes
         run: |
           git diff --quiet && echo "changed=false" >> $GITHUB_OUTPUT || echo "changed=true" >> $GITHUB_OUTPUT
 
-      - name: 🌿 Create cleanup branch & PR
+      - name: "🌿 Create cleanup branch & PR"
         if: steps.changes.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -109,7 +109,7 @@ jobs:
   # SECURITY JOB — Vulnerability scan, secret check, coverage
   # ════════════════════════════════════════════════════════
   security-checks:
-    name: Security & Coverage Checks
+    name: "Security & Coverage Checks"
     needs: lint-and-validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -117,20 +117,20 @@ jobs:
       contents: read
 
     steps:
-      - name: 📥 Checkout
+      - name: "📥 Checkout"
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
         with:
           fetch-depth: 0
 
       # ── 1. Secret / credential leak detection ─────────────────────────────
-      - name: 🔑 Secret scan (Gitleaks)
+      - name: "🔑 Secret scan (Gitleaks)"
         uses: gitleaks/gitleaks-action@44c470a21e9c5a7cdd6fd4e0f2be0e75b5a76acb # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ── 2. Vulnerability scan (auto-detects project type) ─────────────────
 
-      - name: 🐍 Python vulnerability scan (pip-audit)
+      - name: "🐍 Python vulnerability scan (pip-audit)"
         if: hashFiles('requirements*.txt', 'pyproject.toml') != ''
         run: |
           pip install pip-audit
@@ -140,12 +140,12 @@ jobs:
             pip-audit
           fi
 
-      - name: 🟨 JS vulnerability scan (npm audit)
+      - name: "🟨 JS vulnerability scan (npm audit)"
         if: hashFiles('package.json') != ''
         run: npm audit --audit-level=high
 
       # ── 3. Coverage threshold (skip if no test files found) ───────────────
-      - name: 🐍 Coverage threshold — Python
+      - name: "🐍 Coverage threshold — Python"
         if: hashFiles('**/*.py') != ''
         run: |
           TEST_FILES=$(find . -name "test_*.py" -o -name "*_test.py" | grep -v node_modules | head -1)
@@ -159,7 +159,7 @@ jobs:
             exit 1
           }
 
-      - name: ☕ Coverage threshold — Kotlin
+      - name: "☕ Coverage threshold — Kotlin"
         if: hashFiles('**/*.kt') != ''
         run: |
           if [ -f "gradlew" ]; then
@@ -175,7 +175,7 @@ jobs:
             }
           fi
 
-      - name: 🟨 Coverage threshold — JS
+      - name: "🟨 Coverage threshold — JS"
         if: hashFiles('package.json') != ''
         run: |
           if [ -f "package.json" ]; then
