@@ -1626,7 +1626,7 @@
             if (e.data && e.data.type === "SW_UPDATED")
               window.location.reload();
           });
-          // Safari fix: controllerchange → reload
+          // Safari workaround: reload on controllerchange
           navigator.serviceWorker.addEventListener("controllerchange", () => {
             window.location.reload();
           });
