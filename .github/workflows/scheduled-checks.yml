@@ -125,5 +125,5 @@ jobs:
             outdated-python.txt
             outdated-kotlin.txt
             outdated-js.txt
-          retention-days: 30
+          retention-days: 1
           if-no-files-found: ignore
