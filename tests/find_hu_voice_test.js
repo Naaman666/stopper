@@ -56,6 +56,15 @@ const tests = [
     expected: null,
     name: "Handles synth object missing getVoices function",
   },
+  {
+    input: createMockSynth([
+      { lang: "fr-FR", name: "French Voice" },
+      { lang: "de-DE", name: "German Voice" },
+      { lang: "es-ES", name: "Spanish Voice" },
+    ]),
+    expected: null,
+    name: "Tests fallback condition (|| null) when getVoices returns an array with no Hungarian voice",
+  },
 ];
 
 let failedCount = 0;
@@ -78,8 +87,10 @@ tests.forEach((test) => {
 
 if (failedCount > 0) {
   console.log(`\nTotal ${failedCount} tests failed.`);
+  // eslint-disable-next-line no-undef
   process.exit(1);
 } else {
   console.log("\nAll tests passed successfully!");
+  // eslint-disable-next-line no-undef
   process.exit(0);
 }
