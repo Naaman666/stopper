@@ -1372,7 +1372,11 @@
           }
 
           _renderItems() {
-            this.track.style.transform = `translateY(${this.offset}px)`;
+            const newTransform = `translateY(${this.offset}px)`;
+            if (this.track._transform !== newTransform) {
+              this.track.style.transform = newTransform;
+              this.track._transform = newTransform;
+            }
 
             // Csak a látható indexeket számoljuk ki (kb. középpont +- 3 elem)
             const centerIdx = Math.round(
@@ -1406,8 +1410,14 @@
 
               const el = this.items[i];
               if (el) {
-                el.style.opacity = op;
-                el.style.transform = `scale(${sc})`;
+                if (el._op !== op) {
+                  el.style.opacity = op;
+                  el._op = op;
+                }
+                if (el._sc !== sc) {
+                  el.style.transform = `scale(${sc})`;
+                  el._sc = sc;
+                }
               }
             }
 
@@ -1415,8 +1425,14 @@
             for (const i of this.lastVisibleIndices) {
               const el = this.items[i];
               if (el) {
-                el.style.opacity = 0.07;
-                el.style.transform = "scale(1)";
+                if (el._op !== 0.07) {
+                  el.style.opacity = 0.07;
+                  el._op = 0.07;
+                }
+                if (el._sc !== 1) {
+                  el.style.transform = "scale(1)";
+                  el._sc = 1;
+                }
               }
             }
 
