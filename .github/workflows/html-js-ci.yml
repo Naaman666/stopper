@@ -124,7 +124,7 @@ jobs:
 
       # ── 1. Secret / credential leak detection ─────────────────────────────
       - name: "🔑 Secret scan (Gitleaks)"
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2.3.9
+        uses: gitleaks/gitleaks-action@44c470a21e9c5a7cdd6fd4e0f2be0e75b5a76acb # v2.3.9
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -164,7 +164,7 @@ jobs:
         run: |
           if [ -f "gradlew" ]; then
             chmod +x gradlew
-            TEST_TASK=$(./gradlew tasks --all --no-daemon -q 2>/dev/null | grep -c "^test " || true)
+            TEST_TASK=$(./gradlew tasks --all --no-daemon -q 2>/dev/null | grep -c "^test" || true)
             if [ "$TEST_TASK" -eq 0 ]; then
               echo "⚠️ No Kotlin test task found. Skipping coverage check."
               exit 0

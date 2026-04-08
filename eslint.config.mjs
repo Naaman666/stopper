@@ -17,6 +17,8 @@ export default [
         clearInterval: "readonly",
         requestAnimationFrame: "readonly",
         require: "readonly",
+        module: "readonly",
+        exports: "readonly",
       },
     },
     rules: {
@@ -24,4 +26,14 @@ export default [
       "no-undef": "error",
     },
   },
+  {
+    files: ["**/*.js"],
+    languageOptions: {
+      globals: {
+        process: "readonly",
+        global: "readonly",
+        performance: "readonly",
+      }
+    }
+  }
 ];

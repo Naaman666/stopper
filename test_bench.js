@@ -1,4 +1,3 @@
-const fs = require('fs');
 const { JSDOM } = require('jsdom');
 
 const dom = new JSDOM(`<html><body></body></html>`);
