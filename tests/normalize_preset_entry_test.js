@@ -18,6 +18,16 @@ const tests = [
     expected: { min: 60, sec: 0 },
     name: "Maximum valid preset (60:00)",
   },
+  {
+    input: { min: 59, sec: 59 },
+    expected: { min: 59, sec: 59 },
+    name: "Maximum valid preset before 60 (59:59)",
+  },
+  {
+    input: { min: 0, sec: 59 },
+    expected: { min: 0, sec: 59 },
+    name: "Maximum seconds with zero minutes (0:59)",
+  },
 
   // Numbers converted from strings
   {
@@ -68,6 +78,16 @@ const tests = [
     expected: null,
     name: "Sec not zero when min is 60",
   },
+  {
+    input: { min: 60, sec: 59 },
+    expected: null,
+    name: "Max invalid sec when min is 60 (60:59)",
+  },
+  {
+    input: { min: 60, sec: -1 },
+    expected: null,
+    name: "Negative sec when min is 60 (60:-1)",
+  },
 
   // Non-number (NaN) values
   {
@@ -111,8 +131,10 @@ tests.forEach((test) => {
 
 if (failedCount > 0) {
   console.log(`\nTotal ${failedCount} tests failed.`);
+  // eslint-disable-next-line no-undef
   process.exit(1);
 } else {
   console.log("\nAll tests passed successfully!");
+  // eslint-disable-next-line no-undef
   process.exit(0);
 }
