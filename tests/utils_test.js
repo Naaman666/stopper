@@ -311,6 +311,34 @@ const tests = [
   },
   {
     fn: findHuVoice,
+    input: [{ getVoices: () => [] }],
+    expected: null,
+    name: "findHuVoice: Empty voices array",
+  },
+  {
+    fn: findHuVoice,
+    input: [
+      { getVoices: () => [{ name: "No Lang Voice" }, { lang: "en-US" }] },
+    ],
+    expected: null,
+    name: "findHuVoice: Handles voices without 'lang' property",
+  },
+  {
+    fn: findHuVoice,
+    input: [
+      {
+        getVoices: () => {
+          const arr = [];
+          arr.find = () => undefined;
+          return arr;
+        },
+      },
+    ],
+    expected: null,
+    name: "findHuVoice: Fallback condition when Array.prototype.find returns undefined",
+  },
+  {
+    fn: findHuVoice,
     input: [null],
     expected: null,
     name: "findHuVoice: Null SpeechSynthesis instance",
