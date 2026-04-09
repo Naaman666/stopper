@@ -658,6 +658,7 @@
         const drumSecEl = document.getElementById("drumSec");
         const presetScrollEl = document.getElementById("presetScroll");
         const btnSavePresetEl = document.getElementById("btnSavePreset");
+        const clockArea = document.querySelector(".clock-area");
         let presetSlotEls = [];
         let minDrum = null,
           secDrum = null;
@@ -819,7 +820,7 @@
 
         // ── Clock ──
         function getClockSize() {
-          const area = document.querySelector(".clock-area");
+          const area = clockArea;
           if (area) {
             const h = area.clientHeight;
             const w = area.clientWidth;
@@ -1601,7 +1602,6 @@
         updateUI();
 
         // Clock újrarenderelés méretre
-        const clockArea = document.querySelector(".clock-area");
         let resizeRaf = null;
         function onResize() {
           if (resizeRaf) return;
