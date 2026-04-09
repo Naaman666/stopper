@@ -39,6 +39,18 @@ const tests = [
   },
   {
     fn: normalizeDurationParts,
+    input: [59, 59],
+    expected: { min: 59, sec: 59 },
+    name: "normalizeDurationParts: Maximum valid duration before 60 (59:59)",
+  },
+  {
+    fn: normalizeDurationParts,
+    input: [0, 59],
+    expected: { min: 0, sec: 59 },
+    name: "normalizeDurationParts: Maximum seconds with zero minutes (0:59)",
+  },
+  {
+    fn: normalizeDurationParts,
     input: ["12", "45"],
     expected: { min: 12, sec: 45 },
     name: "normalizeDurationParts: String values converted to numbers",
@@ -86,6 +98,18 @@ const tests = [
     input: [60, 1],
     expected: null,
     name: "normalizeDurationParts: Sec not zero when min is 60",
+  },
+  {
+    fn: normalizeDurationParts,
+    input: [60, 59],
+    expected: null,
+    name: "normalizeDurationParts: Max invalid sec when min is 60 (60:59)",
+  },
+  {
+    fn: normalizeDurationParts,
+    input: [60, -1],
+    expected: null,
+    name: "normalizeDurationParts: Negative sec when min is 60 (60:-1)",
   },
   {
     fn: normalizeDurationParts,
