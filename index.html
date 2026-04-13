@@ -437,6 +437,34 @@
         bottom: 0;
         background: linear-gradient(to top, var(--drum-bg), transparent);
       }
+      /* Villanáseffekt visszaszámlálás indításakor */
+      .flash-overlay {
+        position: fixed;
+        inset: 0;
+        background: var(--arc-normal);
+        pointer-events: none;
+        z-index: 9999;
+        opacity: 0;
+      }
+      .flash-overlay.active {
+        animation: flash-anim 0.32s ease-out;
+      }
+      @keyframes flash-anim {
+        0% {
+          opacity: 0;
+        }
+        22% {
+          opacity: 0.72;
+        }
+        100% {
+          opacity: 0;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .flash-overlay.active {
+          animation: none;
+        }
+      }
     </style>
   </head>
   <body>
@@ -533,6 +561,7 @@
         </div>
       </div>
     </div>
+    <div class="flash-overlay" id="flashOverlay" aria-hidden="true"></div>
 
     <script src="js/utils.js"></script>
     <script>
@@ -659,6 +688,15 @@
         const presetScrollEl = document.getElementById("presetScroll");
         const btnSavePresetEl = document.getElementById("btnSavePreset");
         const clockArea = document.querySelector(".clock-area");
+        const flashOverlayEl = document.getElementById("flashOverlay");
+
+        function triggerStartFlash() {
+          if (!flashOverlayEl) return;
+          flashOverlayEl.classList.remove("active");
+          // Reflow kényszerítése, hogy újraindítható legyen az animáció
+          void flashOverlayEl.offsetWidth;
+          flashOverlayEl.classList.add("active");
+        }
         let presetSlotEls = [];
         let minDrum = null,
           secDrum = null;
@@ -1004,6 +1042,7 @@
             lastSpoken = -1;
           }
           state = "running";
+          triggerStartFlash();
           timerStartAt = performance.now();
           timerStartLeft = timeLeft;
           scheduleNextTick();
