@@ -690,7 +690,7 @@
         const clockArea = document.querySelector(".clock-area");
         const flashOverlayEl = document.getElementById("flashOverlay");
 
-        function triggerStartFlash() {
+        function triggerFlash() {
           if (!flashOverlayEl) return;
           flashOverlayEl.classList.remove("active");
           // Reflow kényszerítése, hogy újraindítható legyen az animáció
@@ -1042,7 +1042,7 @@
             lastSpoken = -1;
           }
           state = "running";
-          triggerStartFlash();
+          triggerFlash();
           timerStartAt = performance.now();
           timerStartLeft = timeLeft;
           scheduleNextTick();
@@ -1100,6 +1100,7 @@
         function stopTimer() {
           clearTimers();
           state = "paused";
+          triggerFlash();
           updateUI();
         }
 
